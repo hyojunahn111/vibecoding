@@ -1,0 +1,21 @@
+# ===== 백엔드 =====
+mybooklistback/build/
+mybooklistback/.gradle/
+mybooklistback/out/
+mybooklistback/.idea/
+mybooklistback/*.iml
+mybooklistback/*.ipr
+mybooklistback/*.iws
+mybooklistback/src/main/resources/application-secret.properties
+
+# ===== 프론트엔드 =====
+mybooklistfront/node_modules/
+mybooklistfront/.expo/
+mybooklistfront/dist/
+mybooklistfront/.env
+mybooklistfront/android/
+mybooklistfront/ios/
+
+# ===== 공통 =====
+.DS_Store
+Thumbs.db
