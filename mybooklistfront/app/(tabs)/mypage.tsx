@@ -1,5 +1,5 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { CommonActions } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import {
   Alert,
@@ -10,28 +10,32 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { favoriteApi } from '../../src/services/api';
-import { Favorite, User } from '../../src/types';
+import { useAuth } from '../../src/context/AuthContext';
+import { favoriteApi, UnauthorizedError } from '../../src/services/api';
+import { Favorite } from '../../src/types';
 
 export default function MyPageScreen() {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
+  const navigation = useNavigation();
+  const { user, logout: authLogout } = useAuth();
   const [favorites, setFavorites] = useState<Favorite[]>([]);
   const [loading, setLoading] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
-      loadData();
-    }, [])
+      if (user) loadData();
+    }, [user])
   );
 
   const loadData = async () => {
-    const stored = await AsyncStorage.getItem('user');
-    if (stored) setUser(JSON.parse(stored));
     setLoading(true);
     try {
       const data = await favoriteApi.getAll();
       setFavorites(data);
+    } catch (e) {
+      if (e instanceof UnauthorizedError) {
+        await authLogout();
+      }
     } finally {
       setLoading(false);
     }
@@ -51,15 +55,17 @@ export default function MyPageScreen() {
     ]);
   };
 
-  const logout = async () => {
+  const logout = () => {
     Alert.alert('로그아웃', '로그아웃 하시겠습니까?', [
       { text: '취소', style: 'cancel' },
       {
         text: '로그아웃',
         style: 'destructive',
         onPress: async () => {
-          await AsyncStorage.multiRemove(['user', 'accessToken']);
-          router.replace('/');
+          await authLogout();
+          navigation.getParent()?.dispatch(
+            CommonActions.reset({ index: 0, routes: [{ name: 'index' }] })
+          );
         },
       },
     ]);
@@ -92,7 +98,29 @@ export default function MyPageScreen() {
         data={favorites}
         keyExtractor={item => item.isbn}
         renderItem={({ item }) => (
-          <View style={styles.bookItem}>
+          <TouchableOpacity
+            style={styles.bookItem}
+            onPress={() => {
+              const book = {
+                title: item.title,
+                contents: item.contents,
+                url: item.url,
+                isbn: item.isbn,
+                datetime: item.publishedDate,
+                authors: item.authors ? item.authors.split(', ') : [],
+                publisher: item.publisher,
+                translators: [],
+                price: item.price ?? 0,
+                sale_price: item.price ?? 0,
+                thumbnail: item.thumbnail,
+                status: '',
+              };
+              router.push({
+                pathname: '/book/[isbn]',
+                params: { isbn: item.isbn, book: JSON.stringify(book) },
+              });
+            }}
+          >
             {item.thumbnail ? (
               <Image source={{ uri: item.thumbnail }} style={styles.thumbnail} />
             ) : (
@@ -111,7 +139,7 @@ export default function MyPageScreen() {
             >
               <Text style={styles.removeText}>★</Text>
             </TouchableOpacity>
-          </View>
+          </TouchableOpacity>
         )}
         ListEmptyComponent={
           !loading ? (

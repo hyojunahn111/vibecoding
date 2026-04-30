@@ -39,9 +39,16 @@ export const bookApi = {
   },
 };
 
+export class UnauthorizedError extends Error {
+  constructor() {
+    super('UNAUTHORIZED');
+  }
+}
+
 export const favoriteApi = {
   getAll: async (): Promise<Favorite[]> => {
     const res = await authFetch('/favorites');
+    if (res.status === 401) throw new UnauthorizedError();
     if (!res.ok) throw new Error('즐겨찾기 조회 실패');
     return res.json();
   },
@@ -61,12 +68,14 @@ export const favoriteApi = {
       method: 'POST',
       body: JSON.stringify(book),
     });
+    if (res.status === 401) throw new UnauthorizedError();
     if (!res.ok) throw new Error('즐겨찾기 추가 실패');
     return res.json();
   },
 
   remove: async (isbn: string): Promise<void> => {
     const res = await authFetch(`/favorites/${isbn}`, { method: 'DELETE' });
+    if (res.status === 401) throw new UnauthorizedError();
     if (!res.ok) throw new Error('즐겨찾기 삭제 실패');
   },
 

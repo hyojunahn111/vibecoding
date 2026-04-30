@@ -1,6 +1,18 @@
 import { Tabs } from 'expo-router';
+import { ActivityIndicator, Text, View } from 'react-native';
+import { useAuth } from '../../src/context/AuthContext';
 
 export default function TabsLayout() {
+  const { user, loading } = useAuth();
+
+  if (loading || !user) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#4A90E2" />
+      </View>
+    );
+  }
+
   return (
     <Tabs
       screenOptions={{
@@ -12,6 +24,14 @@ export default function TabsLayout() {
     >
       <Tabs.Screen
         name="index"
+        options={{
+          title: '홈',
+          tabBarLabel: '홈',
+          tabBarIcon: ({ color }) => <TabIcon label="🏠" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="search"
         options={{
           title: '책 검색',
           tabBarLabel: '검색',
@@ -30,7 +50,6 @@ export default function TabsLayout() {
   );
 }
 
-function TabIcon({ label }: { label: string; color: string }) {
-  const { Text } = require('react-native');
+function TabIcon({ label, color }: { label: string; color: string }) {
   return <Text style={{ fontSize: 20 }}>{label}</Text>;
 }
