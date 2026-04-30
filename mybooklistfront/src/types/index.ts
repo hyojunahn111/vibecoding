@@ -13,6 +13,25 @@ export interface Book {
   status: string;
 }
 
+export type ReadingStatus = 'unread' | 'reading' | 'completed';
+
+export interface BookRecord {
+  id: string;
+  date: string;          // YYYY-MM-DD (달력에서 클릭한 날짜)
+  isbn: string;
+  title: string;
+  authors: string[];
+  thumbnail: string;
+  publisher: string;
+  genre: string;
+  status: ReadingStatus;
+  isCompleted: boolean;
+  startDate: string;     // YYYY-MM-DD
+  endDate: string;       // YYYY-MM-DD (isCompleted=true일 때만)
+  rating: number;        // 0–5
+  createdAt: string;
+}
+
 export interface BookSearchResponse {
   documents: Book[];
   meta: {
