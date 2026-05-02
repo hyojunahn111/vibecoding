@@ -12,7 +12,13 @@ import {
 } from 'react-native';
 import { useAuth } from '../../src/context/AuthContext';
 import { favoriteApi, UnauthorizedError } from '../../src/services/api';
-import { Favorite } from '../../src/types';
+import { getAllRecords } from '../../src/services/bookRecordStorage';
+import { BookRecord, Favorite } from '../../src/types';
+
+const stars = (rating: number) => {
+  const r = Math.round(rating);
+  return '★'.repeat(r) + '☆'.repeat(5 - r);
+};
 
 export default function MyPageScreen() {
   const router = useRouter();
@@ -20,12 +26,23 @@ export default function MyPageScreen() {
   const { user, logout: authLogout } = useAuth();
   const [favorites, setFavorites] = useState<Favorite[]>([]);
   const [loading, setLoading] = useState(false);
+  const [completedBooks, setCompletedBooks] = useState<BookRecord[]>([]);
 
   useFocusEffect(
     useCallback(() => {
+      loadCompleted();
       if (user) loadData();
     }, [user])
   );
+
+  const loadCompleted = async () => {
+    const all = await getAllRecords();
+    const completed = all
+      .filter(r => r.status === 'completed')
+      .sort((a, b) => (b.endDate || b.date).localeCompare(a.endDate || a.date))
+      .slice(0, 3);
+    setCompletedBooks(completed);
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -92,11 +109,50 @@ export default function MyPageScreen() {
         </View>
       )}
 
-      <Text style={styles.sectionTitle}>즐겨찾기한 책</Text>
-
       <FlatList
         data={favorites}
         keyExtractor={item => item.isbn}
+        ListHeaderComponent={
+          <>
+            {/* 완독한 책 섹션 */}
+            <View>
+              <View style={styles.sectionRow}>
+                <Text style={styles.sectionTitle}>완독한 책</Text>
+                <TouchableOpacity onPress={() => router.push('/completed-books')}>
+                  <Text style={styles.moreBtn}>더보기 ›</Text>
+                </TouchableOpacity>
+              </View>
+              {completedBooks.length === 0 ? (
+                <View style={styles.emptySmall}>
+                  <Text style={styles.emptySmallText}>아직 완독한 책이 없습니다</Text>
+                </View>
+              ) : (
+                completedBooks.map(book => (
+                  <View key={book.id} style={styles.completedItem}>
+                    {book.thumbnail ? (
+                      <Image source={{ uri: book.thumbnail }} style={styles.thumbnail} />
+                    ) : (
+                      <View style={[styles.thumbnail, styles.noImage]}>
+                        <Text style={styles.noImageText}>📚</Text>
+                      </View>
+                    )}
+                    <View style={styles.bookInfo}>
+                      <Text style={styles.bookTitle} numberOfLines={2}>{book.title}</Text>
+                      <Text style={styles.bookAuthor} numberOfLines={1}>{book.authors?.join(', ')}</Text>
+                      <Text style={styles.starsText}>{stars(book.rating)}</Text>
+                      {book.endDate ? (
+                        <Text style={styles.dateText}>완독 {book.endDate}</Text>
+                      ) : null}
+                    </View>
+                  </View>
+                ))
+              )}
+            </View>
+
+            {/* 즐겨찾기 섹션 제목 */}
+            <Text style={styles.sectionTitle}>즐겨찾기한 책</Text>
+          </>
+        }
         renderItem={({ item }) => (
           <TouchableOpacity
             style={styles.bookItem}
@@ -184,6 +240,13 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   logoutText: { fontSize: 12, color: '#888' },
+  sectionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingRight: 16,
+    paddingTop: 4,
+  },
   sectionTitle: {
     fontSize: 15,
     fontWeight: '600',
@@ -191,6 +254,19 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 8,
   },
+  moreBtn: { fontSize: 13, color: '#4A90E2', fontWeight: '500' },
+  completedItem: {
+    flexDirection: 'row',
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+    gap: 12,
+    alignItems: 'flex-start',
+  },
+  starsText: { fontSize: 12, color: '#F5A623', letterSpacing: 1 },
+  dateText: { fontSize: 11, color: '#aaa' },
+  emptySmall: { paddingHorizontal: 16, paddingBottom: 12 },
+  emptySmallText: { fontSize: 13, color: '#aaa' },
   bookItem: {
     flexDirection: 'row',
     padding: 12,
