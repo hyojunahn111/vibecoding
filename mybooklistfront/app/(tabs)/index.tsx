@@ -131,8 +131,7 @@ export default function HomeScreen() {
         </View>
 
         {/* ── 달력 ── */}
-        <View key={`${year}-${month}`} style={styles.calendar}>
-          {/* 요일 헤더 */}
+        <View style={styles.calendar}>
           <View style={styles.weekRow}>
             {DAYS.map((d, i) => (
               <Text
@@ -148,7 +147,6 @@ export default function HomeScreen() {
             ))}
           </View>
 
-          {/* 날짜 그리드 */}
           {rows.map((row, rowIdx) => (
             <View key={rowIdx} style={styles.weekRow}>
               {Array.from({ length: 7 }, (_, colIdx) => {
@@ -290,6 +288,7 @@ const styles = StyleSheet.create({
   completedInner: {
     backgroundColor: '#F5A623',
     borderRadius: 19,
+    overflow: 'hidden', // Android에서 borderRadius + background가 사각형으로 보이는 버그 방지
   },
   completedText: {
     color: '#fff',
