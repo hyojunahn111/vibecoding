@@ -4,6 +4,7 @@ import {
   Alert,
   Animated,
   Dimensions,
+  Easing,
   FlatList,
   Image,
   Modal,
@@ -534,11 +535,11 @@ export default function BookRecordModal({ date, visible, onClose }: {
   useEffect(() => {
     if (!visible || !date) return;
     translateY.setValue(SCREEN_HEIGHT);
-    Animated.spring(translateY, {
+    Animated.timing(translateY, {
       toValue: 0,
+      duration: 320,
+      easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
-      tension: 80,
-      friction: 14,
     }).start();
     setCurrentDate(date);
     setView('pager');
@@ -609,6 +610,7 @@ export default function BookRecordModal({ date, visible, onClose }: {
       transparent={true}
       onRequestClose={onClose}
     >
+      <View style={ss.modalOverlay} onStartShouldSetResponder={() => true}>
       <Animated.View style={[ss.modal, { transform: [{ translateY }] }]}>
 
         {/* ── 드래그 핸들 (스와이프 전용 영역) ── */}
@@ -687,6 +689,7 @@ export default function BookRecordModal({ date, visible, onClose }: {
         )}
 
       </Animated.View>
+      </View>
     </Modal>
   );
 }
@@ -696,6 +699,7 @@ export default function BookRecordModal({ date, visible, onClose }: {
 // ──────────────────────────────────────────────
 
 const ss = StyleSheet.create({
+  modalOverlay: { flex: 1 },
   modal: { flex: 1, backgroundColor: '#fff', borderTopLeftRadius: 16, borderTopRightRadius: 16, overflow: 'hidden' },
 
   dragHandleArea: { alignItems: 'center', paddingVertical: 12 },
