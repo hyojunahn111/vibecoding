@@ -148,7 +148,7 @@ export default function HomeScreen() {
           </View>
 
           {rows.map((row, rowIdx) => (
-            <View key={rowIdx} style={styles.weekRow}>
+            <View key={`${year}-${month}-${rowIdx}`} style={styles.weekRow}>
               {Array.from({ length: 7 }, (_, colIdx) => {
                 const day = row[colIdx] ?? null;
                 const dateStr = day ? toYMD(year, month, day) : null;
