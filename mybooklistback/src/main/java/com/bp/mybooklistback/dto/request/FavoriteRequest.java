@@ -2,8 +2,10 @@ package com.bp.mybooklistback.dto.request;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Getter
+@Setter
 @NoArgsConstructor
 public class FavoriteRequest {
     private String isbn;

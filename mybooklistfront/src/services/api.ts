@@ -69,7 +69,10 @@ export const favoriteApi = {
       body: JSON.stringify(book),
     });
     if (res.status === 401) throw new UnauthorizedError();
-    if (!res.ok) throw new Error('즐겨찾기 추가 실패');
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.message ?? `즐겨찾기 추가 실패 (${res.status})`);
+    }
     return res.json();
   },
 
