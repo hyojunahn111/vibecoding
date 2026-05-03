@@ -110,7 +110,7 @@ export default function MyPageScreen() {
       )}
 
       <FlatList
-        data={favorites}
+        data={[...favorites].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 3)}
         keyExtractor={item => item.isbn}
         ListHeaderComponent={
           <>
@@ -150,7 +150,12 @@ export default function MyPageScreen() {
             </View>
 
             {/* 즐겨찾기 섹션 제목 */}
-            <Text style={styles.sectionTitle}>즐겨찾기한 책</Text>
+            <View style={styles.sectionRow}>
+              <Text style={styles.sectionTitle}>즐겨찾기한 책</Text>
+              <TouchableOpacity onPress={() => router.push('/favorites')}>
+                <Text style={styles.moreBtn}>더보기 ›</Text>
+              </TouchableOpacity>
+            </View>
           </>
         }
         renderItem={({ item }) => (
