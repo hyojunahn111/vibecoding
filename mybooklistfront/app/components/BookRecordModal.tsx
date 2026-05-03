@@ -2,10 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Animated,
   Dimensions,
   FlatList,
   Image,
   Modal,
+  PanResponder,
   ScrollView,
   StyleSheet,
   Text,
@@ -23,6 +25,7 @@ import { Book, BookRecord, ReadingStatus } from '../../src/types';
 import CalendarDatePicker from './CalendarDatePicker';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
+const SCREEN_HEIGHT = Dimensions.get('window').height;
 
 // ──────────────────────────────────────────────
 // helpers
@@ -481,9 +484,62 @@ export default function BookRecordModal({ date, visible, onClose }: {
   const [dates, setDates] = useState<string[]>([]);
   const flatListRef = useRef<FlatList<string>>(null);
   const currentIndexRef = useRef(HALF);
+  const translateY = useRef(new Animated.Value(0)).current;
+  const dragActive = useRef(new Animated.Value(0)).current;
+  const handleColor = dragActive.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['#ccc', '#4A90E2'],
+  });
+
+  const swipePan = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        dragActive.setValue(1);
+      },
+      onPanResponderMove: (_, gs) => {
+        if (gs.dy > 0) translateY.setValue(gs.dy);
+      },
+      onPanResponderRelease: (_, gs) => {
+        dragActive.setValue(0);
+        if (gs.dy > 120 || gs.vy > 0.8) {
+          Animated.timing(translateY, {
+            toValue: SCREEN_HEIGHT,
+            duration: 220,
+            useNativeDriver: true,
+          }).start(() => {
+            onClose();
+          });
+        } else {
+          Animated.spring(translateY, {
+            toValue: 0,
+            useNativeDriver: true,
+            tension: 120,
+            friction: 10,
+          }).start();
+        }
+      },
+      onPanResponderTerminate: () => {
+        dragActive.setValue(0);
+        Animated.spring(translateY, {
+          toValue: 0,
+          useNativeDriver: true,
+          tension: 120,
+          friction: 10,
+        }).start();
+      },
+    })
+  ).current;
 
   useEffect(() => {
     if (!visible || !date) return;
+    translateY.setValue(SCREEN_HEIGHT);
+    Animated.spring(translateY, {
+      toValue: 0,
+      useNativeDriver: true,
+      tension: 80,
+      friction: 14,
+    }).start();
     setCurrentDate(date);
     setView('pager');
     setEditing(undefined);
@@ -548,11 +604,17 @@ export default function BookRecordModal({ date, visible, onClose }: {
   return (
     <Modal
       visible={visible}
-      animationType="slide"
-      presentationStyle="pageSheet"
+      animationType="none"
+      presentationStyle="overFullScreen"
+      transparent={true}
       onRequestClose={onClose}
     >
-      <View style={ss.modal}>
+      <Animated.View style={[ss.modal, { transform: [{ translateY }] }]}>
+
+        {/* ── 드래그 핸들 (스와이프 전용 영역) ── */}
+        <View style={ss.dragHandleArea} {...swipePan.panHandlers}>
+          <Animated.View style={[ss.dragHandle, { backgroundColor: handleColor }]} />
+        </View>
 
         {/* ── 헤더 ── */}
         <View style={ss.modalHeader}>
@@ -624,7 +686,7 @@ export default function BookRecordModal({ date, visible, onClose }: {
           />
         )}
 
-      </View>
+      </Animated.View>
     </Modal>
   );
 }
@@ -634,7 +696,10 @@ export default function BookRecordModal({ date, visible, onClose }: {
 // ──────────────────────────────────────────────
 
 const ss = StyleSheet.create({
-  modal: { flex: 1, backgroundColor: '#fff' },
+  modal: { flex: 1, backgroundColor: '#fff', borderTopLeftRadius: 16, borderTopRightRadius: 16, overflow: 'hidden' },
+
+  dragHandleArea: { alignItems: 'center', paddingVertical: 12 },
+  dragHandle: { width: 40, height: 5, borderRadius: 3 },
 
   modalHeader: {
     flexDirection: 'row',
