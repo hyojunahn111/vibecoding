@@ -36,6 +36,8 @@ export default function HomeScreen() {
   const [datesWithRecords, setDatesWithRecords] = useState<Set<string>>(new Set());
   const [datesCompleted, setDatesCompleted] = useState<Set<string>>(new Set());
   const [refreshKey, setRefreshKey] = useState(0);
+  const [dailyExcerpt, setDailyExcerpt] = useState<{ text: string; bookTitle: string; authors: string[] } | null>(null);
+  const [hasAnyExcerpt, setHasAnyExcerpt] = useState(false);
 
   const loadData = useCallback(async () => {
     const [s, records] = await Promise.all([
@@ -45,6 +47,21 @@ export default function HomeScreen() {
     setStats(s);
     setDatesWithRecords(new Set(records.map(r => r.date)));
     setDatesCompleted(new Set(records.filter(r => r.status === 'completed').map(r => r.date)));
+
+    const allExcerpts: { text: string; bookTitle: string; authors: string[] }[] = [];
+    records.forEach(r => {
+      r.excerpts?.forEach(text => {
+        if (text.trim()) allExcerpts.push({ text, bookTitle: r.title, authors: r.authors });
+      });
+    });
+    setHasAnyExcerpt(allExcerpts.length > 0);
+    if (allExcerpts.length > 0) {
+      const start = new Date(today.getFullYear(), 0, 0).getTime();
+      const dayOfYear = Math.floor((Date.now() - start) / 86400000);
+      setDailyExcerpt(allExcerpts[dayOfYear % allExcerpts.length]);
+    } else {
+      setDailyExcerpt(null);
+    }
   }, []);
 
   useEffect(() => { loadData(); }, [loadData, refreshKey]);
@@ -116,6 +133,28 @@ export default function HomeScreen() {
               <Text style={styles.statLabel}>주간</Text>
               <Text style={styles.statSub}>이번 주</Text>
             </View>
+          </View>
+        </View>
+
+        {/* ── 다시 읽는 한 줄 ── */}
+        <View style={styles.quoteCard}>
+          <View style={styles.quoteAccent} />
+          <View style={styles.quoteBody}>
+            <Text style={styles.quoteLabel}>다시 읽는 한 줄</Text>
+            {dailyExcerpt ? (
+              <>
+                <Text style={styles.quoteText}>"{dailyExcerpt.text}"</Text>
+                <Text style={styles.quoteSource} numberOfLines={1}>
+                  — {dailyExcerpt.bookTitle}
+                </Text>
+              </>
+            ) : (
+              <Text style={styles.quotePlaceholder}>
+                {hasAnyExcerpt
+                  ? '오늘의 구절을 불러오는 중...'
+                  : '당신이 머물렀던 자리,\n그곳의 기록들을 기다리고 있습니다.'}
+              </Text>
+            )}
           </View>
         </View>
 
@@ -213,6 +252,51 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
+
+  // daily quote
+  quoteCard: {
+    flexDirection: 'row',
+    margin: 16,
+    marginBottom: 8,
+    backgroundColor: '#FFFAF3',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#F0E6D2',
+    overflow: 'hidden',
+  },
+  quoteAccent: {
+    width: 4,
+    backgroundColor: '#F5A623',
+  },
+  quoteBody: {
+    flex: 1,
+    padding: 16,
+    gap: 6,
+  },
+  quoteLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#C47E1A',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+  },
+  quoteText: {
+    fontSize: 15,
+    color: '#2a2a2a',
+    lineHeight: 23,
+    fontStyle: 'italic',
+  },
+  quoteSource: {
+    fontSize: 12,
+    color: '#999',
+    fontWeight: '500',
+  },
+  quotePlaceholder: {
+    fontSize: 14,
+    color: '#bbb',
+    lineHeight: 22,
+    fontStyle: 'italic',
+  },
 
   // stats
   statsCard: {
