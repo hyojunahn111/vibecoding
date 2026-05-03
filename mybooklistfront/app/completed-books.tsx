@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import BookRecordModal from './components/BookRecordModal';
 import { getAllRecords } from '../src/services/bookRecordStorage';
 import { BookRecord } from '../src/types';
 
@@ -27,6 +28,7 @@ export default function CompletedBooksScreen() {
   const [query, setQuery] = useState('');
   const [tab, setTab] = useState<TabType>('sort');
   const [sortType, setSortType] = useState<SortType>('date');
+  const [editingRecord, setEditingRecord] = useState<BookRecord | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -70,7 +72,7 @@ export default function CompletedBooksScreen() {
   }, [filtered]);
 
   const renderBook = (item: BookRecord) => (
-    <View style={styles.bookItem}>
+    <TouchableOpacity style={styles.bookItem} onPress={() => setEditingRecord(item)} activeOpacity={0.7}>
       {item.thumbnail ? (
         <Image source={{ uri: item.thumbnail }} style={styles.thumbnail} />
       ) : (
@@ -88,7 +90,7 @@ export default function CompletedBooksScreen() {
           <Text style={styles.dateText}>완독 {item.endDate}</Text>
         ) : null}
       </View>
-    </View>
+    </TouchableOpacity>
   );
 
   const empty = (
@@ -183,6 +185,16 @@ export default function CompletedBooksScreen() {
           stickySectionHeadersEnabled={false}
         />
       )}
+
+      <BookRecordModal
+        date={editingRecord?.date ?? null}
+        visible={editingRecord !== null}
+        initialRecord={editingRecord ?? undefined}
+        onClose={() => {
+          setEditingRecord(null);
+          getAllRecords().then(all => setBooks(all.filter(r => r.status === 'completed')));
+        }}
+      />
     </View>
   );
 }

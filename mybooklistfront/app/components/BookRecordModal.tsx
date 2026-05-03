@@ -472,10 +472,11 @@ function buildDates(centerDate: string): string[] {
   return Array.from({ length: TOTAL }, (_, i) => addDays(centerDate, i - HALF));
 }
 
-export default function BookRecordModal({ date, visible, onClose }: {
+export default function BookRecordModal({ date, visible, onClose, initialRecord }: {
   date: string | null;
   visible: boolean;
   onClose: () => void;
+  initialRecord?: BookRecord;
 }) {
   const [currentDate, setCurrentDate] = useState(date ?? '');
   const [allRecords, setAllRecords] = useState<BookRecord[]>([]);
@@ -542,11 +543,17 @@ export default function BookRecordModal({ date, visible, onClose }: {
       useNativeDriver: true,
     }).start();
     setCurrentDate(date);
-    setView('pager');
-    setEditing(undefined);
     loadAll();
-    setDates(buildDates(date));
-    currentIndexRef.current = HALF;
+    if (initialRecord) {
+      setEditing(initialRecord);
+      setFormDate(initialRecord.date);
+      setView('form');
+    } else {
+      setView('pager');
+      setEditing(undefined);
+      setDates(buildDates(date));
+      currentIndexRef.current = HALF;
+    }
   }, [visible, date]);
 
   const loadAll = async () => {
@@ -594,8 +601,12 @@ export default function BookRecordModal({ date, visible, onClose }: {
 
   const handleSaved = () => {
     loadAll();
-    setView('pager');
-    setEditing(undefined);
+    if (initialRecord) {
+      onClose();
+    } else {
+      setView('pager');
+      setEditing(undefined);
+    }
   };
 
   if (!date) return null;
@@ -681,10 +692,11 @@ export default function BookRecordModal({ date, visible, onClose }: {
           />
         ) : (
           <RecordForm
+            key={editing?.id ?? formDate}
             date={formDate}
             initial={editing}
             onSave={handleSaved}
-            onCancel={() => { setView('pager'); setEditing(undefined); }}
+            onCancel={() => { if (initialRecord) { onClose(); } else { setView('pager'); setEditing(undefined); } }}
           />
         )}
 
