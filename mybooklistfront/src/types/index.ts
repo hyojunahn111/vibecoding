@@ -29,6 +29,7 @@ export interface BookRecord {
   startDate: string;     // YYYY-MM-DD
   endDate: string;       // YYYY-MM-DD (isCompleted=true일 때만)
   rating: number;        // 0–5
+  excerpts: string[];
   createdAt: string;
 }
 

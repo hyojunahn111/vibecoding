@@ -190,6 +190,9 @@ function RecordForm({ date, initial, onSave, onCancel }: {
   const [startDate, setStartDate] = useState(initial?.startDate ?? date);
   const [endDate, setEndDate] = useState(initial?.endDate ?? '');
   const [rating, setRating] = useState(initial?.rating ?? 0);
+  const [excerpts, setExcerpts] = useState<string[]>(
+    initial?.excerpts?.length ? initial.excerpts : ['']
+  );
   const [showStartPicker, setShowStartPicker] = useState(false);
   const [showEndPicker, setShowEndPicker] = useState(false);
 
@@ -244,6 +247,7 @@ function RecordForm({ date, initial, onSave, onCancel }: {
       startDate,
       endDate: isCompleted ? endDate : '',
       rating: isCompleted ? rating : 0,
+      excerpts: excerpts.filter(e => e.trim()),
       createdAt: initial?.createdAt ?? new Date().toISOString(),
     });
     onSave();
@@ -357,6 +361,41 @@ function RecordForm({ date, initial, onSave, onCancel }: {
           onChangeText={setGenre}
           placeholder="예) 소설, 자기계발, 과학..."
         />
+      </View>
+
+      {/* 발췌 구절 */}
+      <View style={ss.section}>
+        <Text style={ss.label}>발췌 구절</Text>
+        {excerpts.map((excerpt, idx) => (
+          <View key={idx} style={ss.excerptRow}>
+            <TextInput
+              style={[ss.textInput, ss.excerptInput]}
+              value={excerpt}
+              onChangeText={text => {
+                const next = [...excerpts];
+                next[idx] = text;
+                setExcerpts(next);
+              }}
+              placeholder="인상깊은 구절을 입력하세요..."
+              multiline
+            />
+            {excerpts.length > 1 && (
+              <TouchableOpacity
+                style={ss.excerptRemoveBtn}
+                onPress={() => setExcerpts(excerpts.filter((_, i) => i !== idx))}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Text style={ss.excerptRemoveText}>✕</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        ))}
+        <TouchableOpacity
+          style={ss.excerptAddBtn}
+          onPress={() => setExcerpts([...excerpts, ''])}
+        >
+          <Text style={ss.excerptAddText}>+ 구절 추가</Text>
+        </TouchableOpacity>
       </View>
 
       {/* 버튼 */}
@@ -835,6 +874,17 @@ const ss = StyleSheet.create({
     borderWidth: 1, borderColor: '#ddd', borderRadius: 8,
     paddingHorizontal: 12, paddingVertical: 10, fontSize: 15, color: '#1a1a1a',
   },
+
+  excerptRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 8 },
+  excerptInput: { flex: 1, minHeight: 44 },
+  excerptRemoveBtn: { paddingTop: 12 },
+  excerptRemoveText: { fontSize: 14, color: '#aaa' },
+  excerptAddBtn: {
+    flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start',
+    paddingVertical: 6, paddingHorizontal: 12, borderRadius: 8,
+    borderWidth: 1, borderColor: '#4A90E2', marginTop: 2,
+  },
+  excerptAddText: { fontSize: 13, color: '#4A90E2', fontWeight: '600' },
 
   starRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   star: { fontSize: 28, color: '#F5A623' },
