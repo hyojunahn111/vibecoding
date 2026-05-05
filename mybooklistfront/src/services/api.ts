@@ -3,6 +3,13 @@ import { BookSearchResponse, Favorite } from '../types';
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://10.0.2.2:8080';
 
+// 카카오 CDN 썸네일 URL의 크기 파라미터를 고해상도로 교체
+// 예: R120x174.q85 → R400x0.q90
+export function toHiResThumbnail(url: string | undefined | null): string | undefined {
+  if (!url) return undefined;
+  return url.replace(/R\d+x\d+\.q\d+/, 'R400x0.q90');
+}
+
 async function getToken(): Promise<string | null> {
   return AsyncStorage.getItem('accessToken');
 }
