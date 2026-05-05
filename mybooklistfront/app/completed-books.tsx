@@ -30,21 +30,26 @@ const stars = (rating: number) => {
   return '★'.repeat(r) + '☆'.repeat(5 - r);
 };
 
-const GENRE_PALETTES: [string, string][] = [
-  ['#EEF4FF', '#4A90E2'],
-  ['#FFF3EE', '#F5A623'],
-  ['#F0FFF6', '#2ECC71'],
-  ['#FDF4FF', '#9B59B6'],
-  ['#FFF8EE', '#E8943A'],
-  ['#EEFFF8', '#1ABC9C'],
-  ['#FFF0F0', '#E74C3C'],
-  ['#F4F0FF', '#8E44AD'],
-];
+const GENRE_ACCENTS = ['#4A90E2', '#F5A623', '#2ECC71', '#9B59B6', '#E8943A', '#1ABC9C', '#E74C3C', '#8E44AD'];
 
-function getGenrePalette(title: string): [string, string] {
+function getGenreAccent(title: string): string {
   let hash = 0;
   for (let i = 0; i < title.length; i++) hash = title.charCodeAt(i) + ((hash << 5) - hash);
-  return GENRE_PALETTES[Math.abs(hash) % GENRE_PALETTES.length];
+  return GENRE_ACCENTS[Math.abs(hash) % GENRE_ACCENTS.length];
+}
+
+const SPINE_PALETTE = [
+  '#C0392B', '#2980B9', '#27AE60', '#D4A017',
+  '#8E44AD', '#16A085', '#E67E22', '#2C3E50',
+  '#E91E8C', '#1565C0', '#558B2F', '#6D4C41',
+];
+const SPINE_HEIGHTS = [90, 78, 94, 82, 88, 72, 86, 80];
+const MAX_SPINES = 8;
+
+function getSpineColor(title: string): string {
+  let hash = 0;
+  for (let i = 0; i < title.length; i++) hash = title.charCodeAt(i) + ((hash << 5) - hash);
+  return SPINE_PALETTE[Math.abs(hash) % SPINE_PALETTE.length];
 }
 
 export default function CompletedBooksScreen() {
@@ -172,46 +177,65 @@ export default function CompletedBooksScreen() {
   );
 
   const renderGenreCard = ({ item }: { item: { title: string; data: BookRecord[] } }) => {
-    const [bgColor, accentColor] = getGenrePalette(item.title);
-    const thumbs = item.data.filter(b => b.thumbnail).slice(0, 3).map(b => b.thumbnail!);
-    const rotations = [-7, 2, -4];
-    const translateXs = [-20, 0, 20];
-    const translateYs = [6, 0, 8];
+    const accentColor = getGenreAccent(item.title);
+    const hasOverflow = item.data.length > MAX_SPINES;
+    const booksToShow = item.data.slice(0, hasOverflow ? MAX_SPINES - 1 : MAX_SPINES);
+    const overflow = item.data.length - booksToShow.length;
 
     return (
-      <TouchableOpacity
-        style={[styles.genreCard, { backgroundColor: bgColor }]}
-        onPress={() => openGenre(item.title)}
-        activeOpacity={0.82}
-      >
-        <View style={styles.genreThumbArea}>
-          {thumbs.length > 0 ? (
-            thumbs.map((uri, i) => (
-              <Image
-                key={i}
-                source={{ uri: toHiResThumbnail(uri) }}
-                style={[
-                  styles.genreThumbImg,
-                  {
-                    transform: [
-                      { rotate: `${rotations[i]}deg` },
-                      { translateX: translateXs[i] },
-                      { translateY: translateYs[i] },
-                    ],
-                    zIndex: thumbs.length - i,
-                  },
-                ]}
-                resizeMode="cover"
-              />
-            ))
-          ) : (
-            <View style={[styles.genreEmptyThumb, { backgroundColor: accentColor + '22' }]}>
-              <Text style={styles.genreEmptyEmoji}>📚</Text>
+      <TouchableOpacity style={styles.genreCard} onPress={() => openGenre(item.title)} activeOpacity={0.82}>
+        {/* 상단 판자 */}
+        <View style={styles.shelfTopBoard} />
+
+        {/* 책장 칸 */}
+        <View style={styles.shelfFrame}>
+          <View style={styles.shelfSidePanel}>
+            <View style={styles.shelfSideEdge} />
+          </View>
+
+          <View style={styles.shelfInterior}>
+            {/* 내부 상단 음영 */}
+            <View style={styles.shelfInnerShadow} />
+
+            {booksToShow.length > 0 ? (
+              <View style={styles.shelfBooksRow}>
+                {booksToShow.map((book, i) => {
+                  const color = getSpineColor(book.title);
+                  const h = SPINE_HEIGHTS[i % SPINE_HEIGHTS.length];
+                  return (
+                    <View key={book.id} style={[styles.bookSpine, { height: h, backgroundColor: color }]}>
+                      {/* 상단 색 띠 */}
+                      <View style={styles.spineTopBand} />
+                      {/* 중앙 라벨 */}
+                      <View style={styles.spineLabel} />
+                    </View>
+                  );
+                })}
+                {hasOverflow && (
+                  <View style={[styles.bookSpine, styles.bookSpineMore, { height: 78 }]}>
+                    <Text style={styles.bookSpineMoreText}>+{overflow}</Text>
+                  </View>
+                )}
+              </View>
+            ) : (
+              <View style={styles.shelfEmptyBooks}>
+                <Text style={styles.shelfEmptyEmoji}>📚</Text>
+              </View>
+            )}
+
+            {/* 바닥 선반 */}
+            <View style={styles.shelfFloor}>
+              <View style={styles.shelfFloorHighlight} />
             </View>
-          )}
+          </View>
+
+          <View style={[styles.shelfSidePanel, { alignItems: 'flex-end' }]}>
+            <View style={styles.shelfSideEdge} />
+          </View>
         </View>
 
-        <View style={[styles.genreCardBottom, { borderTopColor: accentColor + '33' }]}>
+        {/* 장르 정보 */}
+        <View style={[styles.genreCardBottom, { borderTopColor: accentColor + '44' }]}>
           <Text style={styles.genreCardName} numberOfLines={1}>{item.title}</Text>
           <View style={[styles.genreCardBadge, { backgroundColor: accentColor }]}>
             <Text style={styles.genreCardBadgeText}>{item.data.length}</Text>
@@ -441,38 +465,98 @@ const styles = StyleSheet.create({
   genreRow: { gap: 8, marginBottom: 8 },
   genreCard: {
     width: GENRE_CARD_W,
-    borderRadius: 16,
+    borderRadius: 14,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
+    backgroundColor: '#7D5230',
+    shadowColor: '#4a2e10',
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.22,
+    shadowRadius: 10,
+    elevation: 6,
   },
-  genreThumbArea: {
-    height: 120,
-    alignItems: 'center',
+
+  // 책장 구조
+  shelfTopBoard: {
+    height: 9,
+    backgroundColor: '#6B4220',
+    borderBottomWidth: 2,
+    borderBottomColor: '#A0662E',
+  },
+  shelfFrame: {
+    flexDirection: 'row',
+  },
+  shelfSidePanel: {
+    width: 11,
+    backgroundColor: '#7D5230',
+    justifyContent: 'flex-start',
+  },
+  shelfSideEdge: {
+    width: 3,
+    flex: 1,
+    backgroundColor: '#A0672F',
+  },
+  shelfInterior: {
+    flex: 1,
     justifyContent: 'flex-end',
-    paddingBottom: 10,
+    minHeight: 136,
+    backgroundColor: '#DDD0BE',
   },
-  genreThumbImg: {
-    position: 'absolute',
-    width: 54,
-    height: 76,
-    borderRadius: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.18,
-    shadowRadius: 4,
+  shelfInnerShadow: {
+    height: 16,
+    backgroundColor: 'rgba(0,0,0,0.10)',
   },
-  genreEmptyThumb: {
-    width: 64,
-    height: 80,
-    borderRadius: 10,
+  shelfBooksRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    flex: 1,
+    paddingHorizontal: 4,
+    gap: 2,
+  },
+  bookSpine: {
+    width: 17,
+    borderTopLeftRadius: 2,
+    borderTopRightRadius: 2,
+    overflow: 'hidden',
+    justifyContent: 'space-between',
+    // 우측 얇은 그림자 선
+    borderRightWidth: 1,
+    borderRightColor: 'rgba(0,0,0,0.18)',
+  },
+  spineTopBand: {
+    height: 11,
+    backgroundColor: 'rgba(255,255,255,0.28)',
+  },
+  spineLabel: {
+    width: 11,
+    height: 4,
+    backgroundColor: 'rgba(255,255,255,0.40)',
+    borderRadius: 1,
+    alignSelf: 'center',
+    marginVertical: 4,
+  },
+
+  bookSpineMore: {
+    backgroundColor: 'rgba(0,0,0,0.22)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRightWidth: 0,
+  },
+  bookSpineMoreText: { fontSize: 9, fontWeight: '800', color: '#fff' },
+  shelfEmptyBooks: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  genreEmptyEmoji: { fontSize: 32 },
+  shelfEmptyEmoji: { fontSize: 26 },
+  shelfFloor: {
+    height: 13,
+    backgroundColor: '#6B4220',
+  },
+  shelfFloorHighlight: {
+    height: 3,
+    backgroundColor: '#A0672F',
+  },
+
   genreCardBottom: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -480,6 +564,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderTopWidth: 1,
+    backgroundColor: '#fff',
   },
   genreCardName: { fontSize: 13, fontWeight: '700', color: '#1a1a1a', flex: 1, marginRight: 6 },
   genreCardBadge: {

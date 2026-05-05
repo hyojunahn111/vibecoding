@@ -120,7 +120,7 @@ export default function MyPageScreen() {
           )}
           <View style={styles.profileInfo}>
             <Text style={styles.nickname}>{user.nickname}</Text>
-            <Text style={styles.bookCount}>저장된 책 {favorites.length}권</Text>
+            <Text style={styles.bookCount}>즐겨찾기된 책 {favorites.length}권</Text>
           </View>
           <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
             <Text style={styles.logoutText}>로그아웃</Text>
