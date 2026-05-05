@@ -1,7 +1,8 @@
 import { Stack } from 'expo-router';
 import { useFocusEffect } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import {
+  Animated,
   Dimensions,
   FlatList,
   Image,
@@ -12,13 +13,14 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-
-const SCREEN_W = Dimensions.get('window').width;
-const GRID_ITEM_W = Math.floor((SCREEN_W - 16 - 8) / 3);
 import BookRecordModal from './components/BookRecordModal';
 import { toHiResThumbnail } from '../src/services/api';
 import { getAllRecords } from '../src/services/bookRecordStorage';
 import { BookRecord } from '../src/types';
+
+const SCREEN_W = Dimensions.get('window').width;
+const GRID_ITEM_W = Math.floor((SCREEN_W - 16 - 8) / 3);
+const GENRE_CARD_W = Math.floor((SCREEN_W - 24) / 2);
 
 type SortType = 'date' | 'rating';
 type TabType = 'sort' | 'genre' | 'author';
@@ -28,12 +30,34 @@ const stars = (rating: number) => {
   return '★'.repeat(r) + '☆'.repeat(5 - r);
 };
 
+const GENRE_PALETTES: [string, string][] = [
+  ['#EEF4FF', '#4A90E2'],
+  ['#FFF3EE', '#F5A623'],
+  ['#F0FFF6', '#2ECC71'],
+  ['#FDF4FF', '#9B59B6'],
+  ['#FFF8EE', '#E8943A'],
+  ['#EEFFF8', '#1ABC9C'],
+  ['#FFF0F0', '#E74C3C'],
+  ['#F4F0FF', '#8E44AD'],
+];
+
+function getGenrePalette(title: string): [string, string] {
+  let hash = 0;
+  for (let i = 0; i < title.length; i++) hash = title.charCodeAt(i) + ((hash << 5) - hash);
+  return GENRE_PALETTES[Math.abs(hash) % GENRE_PALETTES.length];
+}
+
 export default function CompletedBooksScreen() {
   const [books, setBooks] = useState<BookRecord[]>([]);
   const [query, setQuery] = useState('');
   const [tab, setTab] = useState<TabType>('sort');
   const [sortType, setSortType] = useState<SortType>('date');
   const [editingRecord, setEditingRecord] = useState<BookRecord | null>(null);
+  const [selectedGenre, setSelectedGenre] = useState<string | null>(null);
+
+  const overlayOpacity = useRef(new Animated.Value(0)).current;
+  const overlayTranslateY = useRef(new Animated.Value(28)).current;
+  const overlayScale = useRef(new Animated.Value(0.96)).current;
 
   useFocusEffect(
     useCallback(() => {
@@ -57,6 +81,25 @@ export default function CompletedBooksScreen() {
     );
   }, [filtered, sortType]);
 
+  const sections = useMemo(() => {
+    const map = new Map<string, BookRecord[]>();
+    for (const book of filtered) {
+      const key = book.genre?.trim() || '미분류';
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(book);
+    }
+    return Array.from(map.entries())
+      .sort(([a], [b]) => {
+        if (a === '미분류') return 1;
+        if (b === '미분류') return -1;
+        return a.localeCompare(b, 'ko');
+      })
+      .map(([title, data]) => ({
+        title,
+        data: data.sort((a, b) => (b.endDate || b.date).localeCompare(a.endDate || a.date)),
+      }));
+  }, [filtered]);
+
   const authorSections = useMemo(() => {
     const map = new Map<string, BookRecord[]>();
     for (const book of filtered) {
@@ -76,24 +119,25 @@ export default function CompletedBooksScreen() {
       }));
   }, [filtered]);
 
-  const sections = useMemo(() => {
-    const map = new Map<string, BookRecord[]>();
-    for (const book of filtered) {
-      const key = book.genre?.trim() || '미분류';
-      if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push(book);
-    }
-    return Array.from(map.entries())
-      .sort(([a], [b]) => {
-        if (a === '미분류') return 1;
-        if (b === '미분류') return -1;
-        return a.localeCompare(b, 'ko');
-      })
-      .map(([title, data]) => ({
-        title,
-        data: data.sort((a, b) => (b.endDate || b.date).localeCompare(a.endDate || a.date)),
-      }));
-  }, [filtered]);
+  const openGenre = (genre: string) => {
+    setSelectedGenre(genre);
+    overlayOpacity.setValue(0);
+    overlayTranslateY.setValue(28);
+    overlayScale.setValue(0.96);
+    Animated.parallel([
+      Animated.timing(overlayOpacity, { toValue: 1, duration: 260, useNativeDriver: true }),
+      Animated.spring(overlayTranslateY, { toValue: 0, tension: 72, friction: 12, useNativeDriver: true }),
+      Animated.spring(overlayScale, { toValue: 1, tension: 72, friction: 12, useNativeDriver: true }),
+    ]).start();
+  };
+
+  const closeGenre = () => {
+    Animated.parallel([
+      Animated.timing(overlayOpacity, { toValue: 0, duration: 200, useNativeDriver: true }),
+      Animated.timing(overlayTranslateY, { toValue: 16, duration: 200, useNativeDriver: true }),
+      Animated.timing(overlayScale, { toValue: 0.96, duration: 200, useNativeDriver: true }),
+    ]).start(() => setSelectedGenre(null));
+  };
 
   const renderGridBook = (item: BookRecord) => (
     <TouchableOpacity style={styles.gridItem} onPress={() => setEditingRecord(item)} activeOpacity={0.7}>
@@ -120,22 +164,70 @@ export default function CompletedBooksScreen() {
       )}
       <View style={styles.bookInfo}>
         <Text style={styles.bookTitle} numberOfLines={2}>{item.title}</Text>
-        <Text style={styles.bookAuthor} numberOfLines={1}>
-          {item.authors?.join(', ')}
-        </Text>
+        <Text style={styles.bookAuthor} numberOfLines={1}>{item.authors?.join(', ')}</Text>
         <Text style={styles.starsText}>{stars(item.rating)}</Text>
-        {item.endDate ? (
-          <Text style={styles.dateText}>완독 {item.endDate}</Text>
-        ) : null}
+        {item.endDate ? <Text style={styles.dateText}>완독 {item.endDate}</Text> : null}
       </View>
     </TouchableOpacity>
   );
+
+  const renderGenreCard = ({ item }: { item: { title: string; data: BookRecord[] } }) => {
+    const [bgColor, accentColor] = getGenrePalette(item.title);
+    const thumbs = item.data.filter(b => b.thumbnail).slice(0, 3).map(b => b.thumbnail!);
+    const rotations = [-7, 2, -4];
+    const translateXs = [-20, 0, 20];
+    const translateYs = [6, 0, 8];
+
+    return (
+      <TouchableOpacity
+        style={[styles.genreCard, { backgroundColor: bgColor }]}
+        onPress={() => openGenre(item.title)}
+        activeOpacity={0.82}
+      >
+        <View style={styles.genreThumbArea}>
+          {thumbs.length > 0 ? (
+            thumbs.map((uri, i) => (
+              <Image
+                key={i}
+                source={{ uri: toHiResThumbnail(uri) }}
+                style={[
+                  styles.genreThumbImg,
+                  {
+                    transform: [
+                      { rotate: `${rotations[i]}deg` },
+                      { translateX: translateXs[i] },
+                      { translateY: translateYs[i] },
+                    ],
+                    zIndex: thumbs.length - i,
+                  },
+                ]}
+                resizeMode="cover"
+              />
+            ))
+          ) : (
+            <View style={[styles.genreEmptyThumb, { backgroundColor: accentColor + '22' }]}>
+              <Text style={styles.genreEmptyEmoji}>📚</Text>
+            </View>
+          )}
+        </View>
+
+        <View style={[styles.genreCardBottom, { borderTopColor: accentColor + '33' }]}>
+          <Text style={styles.genreCardName} numberOfLines={1}>{item.title}</Text>
+          <View style={[styles.genreCardBadge, { backgroundColor: accentColor }]}>
+            <Text style={styles.genreCardBadgeText}>{item.data.length}</Text>
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   const empty = (
     <View style={styles.empty}>
       <Text style={styles.emptyText}>완독한 책이 없습니다</Text>
     </View>
   );
+
+  const selectedSection = sections.find(s => s.title === selectedGenre);
 
   return (
     <View style={styles.container}>
@@ -189,17 +281,13 @@ export default function CompletedBooksScreen() {
               style={[styles.sortBtn, sortType === 'date' && styles.sortBtnActive]}
               onPress={() => setSortType('date')}
             >
-              <Text style={[styles.sortBtnText, sortType === 'date' && styles.sortBtnTextActive]}>
-                날짜 순
-              </Text>
+              <Text style={[styles.sortBtnText, sortType === 'date' && styles.sortBtnTextActive]}>날짜 순</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.sortBtn, sortType === 'rating' && styles.sortBtnActive]}
               onPress={() => setSortType('rating')}
             >
-              <Text style={[styles.sortBtnText, sortType === 'rating' && styles.sortBtnTextActive]}>
-                별점 순
-              </Text>
+              <Text style={[styles.sortBtnText, sortType === 'rating' && styles.sortBtnTextActive]}>별점 순</Text>
             </TouchableOpacity>
           </View>
           <FlatList
@@ -214,21 +302,16 @@ export default function CompletedBooksScreen() {
         </>
       )}
 
-      {/* 분야별 탭 */}
+      {/* 분야별 탭 — 카드 그리드 */}
       {tab === 'genre' && (
-        <SectionList
-          sections={sections}
-          keyExtractor={item => item.id}
-          renderItem={({ item }) => renderBook(item)}
-          renderSectionHeader={({ section }) => (
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionHeaderText}>{section.title}</Text>
-              <Text style={styles.sectionCount}>{section.data.length}권</Text>
-            </View>
-          )}
+        <FlatList
+          data={sections}
+          keyExtractor={item => item.title}
+          renderItem={renderGenreCard}
+          numColumns={2}
+          columnWrapperStyle={styles.genreRow}
+          contentContainerStyle={[{ padding: 8 }, sections.length === 0 && styles.emptyContainer]}
           ListEmptyComponent={empty}
-          contentContainerStyle={sections.length === 0 && styles.emptyContainer}
-          stickySectionHeadersEnabled={false}
         />
       )}
 
@@ -248,6 +331,34 @@ export default function CompletedBooksScreen() {
           contentContainerStyle={authorSections.length === 0 && styles.emptyContainer}
           stickySectionHeadersEnabled={false}
         />
+      )}
+
+      {/* 분야 상세 오버레이 */}
+      {selectedGenre !== null && (
+        <Animated.View
+          style={[
+            StyleSheet.absoluteFillObject,
+            styles.genreOverlay,
+            {
+              opacity: overlayOpacity,
+              transform: [{ translateY: overlayTranslateY }, { scale: overlayScale }],
+            },
+          ]}
+        >
+          <View style={styles.genreOverlayHeader}>
+            <TouchableOpacity onPress={closeGenre} style={styles.genreBackBtn}>
+              <Text style={styles.genreBackText}>‹</Text>
+            </TouchableOpacity>
+            <Text style={styles.genreOverlayTitle}>{selectedGenre}</Text>
+            <Text style={styles.genreOverlayCount}>{selectedSection?.data.length ?? 0}권</Text>
+          </View>
+          <FlatList
+            data={selectedSection?.data ?? []}
+            keyExtractor={item => item.id}
+            renderItem={({ item }) => renderBook(item)}
+            contentContainerStyle={{ paddingBottom: 24 }}
+          />
+        </Animated.View>
       )}
 
       <BookRecordModal
@@ -288,15 +399,8 @@ const styles = StyleSheet.create({
     borderBottomColor: '#eee',
     marginTop: 8,
   },
-  tab: {
-    flex: 1,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  tabActive: {
-    borderBottomWidth: 2,
-    borderBottomColor: '#4A90E2',
-  },
+  tab: { flex: 1, paddingVertical: 12, alignItems: 'center' },
+  tabActive: { borderBottomWidth: 2, borderBottomColor: '#4A90E2' },
   tabText: { fontSize: 14, fontWeight: '500', color: '#aaa' },
   tabTextActive: { color: '#4A90E2', fontWeight: '700' },
 
@@ -320,40 +424,94 @@ const styles = StyleSheet.create({
   sortBtnTextActive: { color: '#fff', fontWeight: '600' },
 
   // 정렬 탭 그리드
-  gridRow: {
-    gap: 4,
-    marginBottom: 4,
-  },
-  gridItem: {
-    width: GRID_ITEM_W,
-    marginBottom: 8,
-  },
+  gridRow: { gap: 4, marginBottom: 4 },
+  gridItem: { width: GRID_ITEM_W, marginBottom: 8 },
   gridImage: {
     width: GRID_ITEM_W,
     height: Math.round(GRID_ITEM_W * 1.5),
     borderRadius: 6,
     backgroundColor: '#f0f0f0',
   },
-  gridNoImage: {
+  gridNoImage: { justifyContent: 'center', alignItems: 'center' },
+  gridNoImageText: { fontSize: 28 },
+  gridTitle: { fontSize: 11, fontWeight: '600', color: '#1a1a1a', marginTop: 5, lineHeight: 15 },
+  gridStars: { fontSize: 10, color: '#F5A623', marginTop: 2, letterSpacing: 0.5 },
+
+  // 분야별 카드 그리드
+  genreRow: { gap: 8, marginBottom: 8 },
+  genreCard: {
+    width: GENRE_CARD_W,
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  genreThumbArea: {
+    height: 120,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    paddingBottom: 10,
+  },
+  genreThumbImg: {
+    position: 'absolute',
+    width: 54,
+    height: 76,
+    borderRadius: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18,
+    shadowRadius: 4,
+  },
+  genreEmptyThumb: {
+    width: 64,
+    height: 80,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  gridNoImageText: { fontSize: 28 },
-  gridTitle: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#1a1a1a',
-    marginTop: 5,
-    lineHeight: 15,
+  genreEmptyEmoji: { fontSize: 32 },
+  genreCardBottom: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderTopWidth: 1,
   },
-  gridStars: {
-    fontSize: 10,
-    color: '#F5A623',
-    marginTop: 2,
-    letterSpacing: 0.5,
+  genreCardName: { fontSize: 13, fontWeight: '700', color: '#1a1a1a', flex: 1, marginRight: 6 },
+  genreCardBadge: {
+    minWidth: 22,
+    height: 22,
+    borderRadius: 11,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 6,
   },
+  genreCardBadgeText: { fontSize: 11, fontWeight: '700', color: '#fff' },
 
-  // 책 카드 (분야별/작가별용)
+  // 분야 상세 오버레이
+  genreOverlay: {
+    backgroundColor: '#fff',
+    zIndex: 20,
+  },
+  genreOverlayHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingRight: 16,
+    paddingVertical: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    gap: 4,
+  },
+  genreBackBtn: { padding: 12 },
+  genreBackText: { fontSize: 30, color: '#4A90E2', lineHeight: 34 },
+  genreOverlayTitle: { flex: 1, fontSize: 17, fontWeight: '700', color: '#1a1a1a' },
+  genreOverlayCount: { fontSize: 13, color: '#888' },
+
+  // 책 카드 (작가별/분야 상세용)
   bookItem: {
     flexDirection: 'row',
     padding: 12,
@@ -363,11 +521,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   thumbnail: { width: 56, height: 80, borderRadius: 4 },
-  noImage: {
-    backgroundColor: '#f5f5f5',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+  noImage: { backgroundColor: '#f5f5f5', justifyContent: 'center', alignItems: 'center' },
   noImageText: { fontSize: 22 },
   bookInfo: { flex: 1, gap: 4 },
   bookTitle: { fontSize: 14, fontWeight: '600', color: '#1a1a1a', lineHeight: 20 },
@@ -375,7 +529,7 @@ const styles = StyleSheet.create({
   starsText: { fontSize: 13, color: '#F5A623', letterSpacing: 1 },
   dateText: { fontSize: 11, color: '#aaa' },
 
-  // 분야별 섹션 헤더
+  // 작가별 섹션 헤더
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
