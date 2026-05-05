@@ -12,8 +12,10 @@ import {
 } from 'react-native';
 import { useAuth } from '../../src/context/AuthContext';
 import { favoriteApi, UnauthorizedError } from '../../src/services/api';
-import { getAllRecords } from '../../src/services/bookRecordStorage';
+import { getAllRecords, getCompletedStats } from '../../src/services/bookRecordStorage';
 import { BookRecord, Favorite } from '../../src/types';
+
+const today = new Date();
 
 const stars = (rating: number) => {
   const r = Math.round(rating);
@@ -27,6 +29,8 @@ export default function MyPageScreen() {
   const [favorites, setFavorites] = useState<Favorite[]>([]);
   const [loading, setLoading] = useState(false);
   const [completedBooks, setCompletedBooks] = useState<BookRecord[]>([]);
+  const [stats, setStats] = useState({ year: 0, month: 0, week: 0 });
+  const [dailyExcerpt, setDailyExcerpt] = useState<{ text: string; bookTitle: string } | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -36,12 +40,27 @@ export default function MyPageScreen() {
   );
 
   const loadCompleted = async () => {
-    const all = await getAllRecords();
+    const [s, all] = await Promise.all([getCompletedStats(), getAllRecords()]);
+    setStats(s);
     const completed = all
       .filter(r => r.status === 'completed')
       .sort((a, b) => (b.endDate || b.date).localeCompare(a.endDate || a.date))
       .slice(0, 3);
     setCompletedBooks(completed);
+
+    const allExcerpts: { text: string; bookTitle: string }[] = [];
+    all.forEach(r => {
+      r.excerpts?.forEach(text => {
+        if (text.trim()) allExcerpts.push({ text, bookTitle: r.title });
+      });
+    });
+    if (allExcerpts.length > 0) {
+      const start = new Date(today.getFullYear(), 0, 0).getTime();
+      const dayOfYear = Math.floor((Date.now() - start) / 86400000);
+      setDailyExcerpt(allExcerpts[dayOfYear % allExcerpts.length]);
+    } else {
+      setDailyExcerpt(null);
+    }
   };
 
   const loadData = async () => {
@@ -114,6 +133,57 @@ export default function MyPageScreen() {
         keyExtractor={item => item.isbn}
         ListHeaderComponent={
           <>
+            {/* 완독한 책 통계 카드 */}
+            <View style={styles.statsCard}>
+              <Text style={styles.statsHeading}>완독한 책</Text>
+              <View style={styles.statsRow}>
+                <View style={styles.statItem}>
+                  <View style={styles.statCountRow}>
+                    <Text style={styles.statCount}>{stats.year}</Text>
+                    <Text style={styles.statUnit}>권</Text>
+                  </View>
+                  <Text style={styles.statLabel}>연간</Text>
+                  <Text style={styles.statSub}>{today.getFullYear()}년</Text>
+                </View>
+                <View style={styles.statDivider} />
+                <View style={styles.statItem}>
+                  <View style={styles.statCountRow}>
+                    <Text style={styles.statCount}>{stats.month}</Text>
+                    <Text style={styles.statUnit}>권</Text>
+                  </View>
+                  <Text style={styles.statLabel}>월간</Text>
+                  <Text style={styles.statSub}>{today.getMonth() + 1}월</Text>
+                </View>
+                <View style={styles.statDivider} />
+                <View style={styles.statItem}>
+                  <View style={styles.statCountRow}>
+                    <Text style={styles.statCount}>{stats.week}</Text>
+                    <Text style={styles.statUnit}>권</Text>
+                  </View>
+                  <Text style={styles.statLabel}>주간</Text>
+                  <Text style={styles.statSub}>이번 주</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* 다시 읽는 한 줄 */}
+            <View style={styles.quoteCard}>
+              <View style={styles.quoteAccent} />
+              <View style={styles.quoteBody}>
+                <Text style={styles.quoteLabel}>다시 읽는 한 줄</Text>
+                {dailyExcerpt ? (
+                  <>
+                    <Text style={styles.quoteText}>"{dailyExcerpt.text}"</Text>
+                    <Text style={styles.quoteSource} numberOfLines={1}>— {dailyExcerpt.bookTitle}</Text>
+                  </>
+                ) : (
+                  <Text style={styles.quotePlaceholder}>
+                    {'당신이 머물렀던 자리,\n그곳의 기록들을 기다리고 있습니다.'}
+                  </Text>
+                )}
+              </View>
+            </View>
+
             {/* 완독한 책 섹션 */}
             <View>
               <View style={styles.sectionRow}>
@@ -245,6 +315,60 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   logoutText: { fontSize: 12, color: '#888' },
+  statsCard: {
+    margin: 16,
+    marginBottom: 8,
+    paddingVertical: 20,
+    paddingHorizontal: 8,
+    backgroundColor: '#4A90E2',
+    borderRadius: 16,
+    shadowColor: '#4A90E2',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  statsHeading: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.8)',
+    fontWeight: '600',
+    letterSpacing: 0.8,
+    textAlign: 'center',
+    marginBottom: 16,
+    textTransform: 'uppercase',
+  },
+  statsRow: { flexDirection: 'row', alignItems: 'center' },
+  statItem: { flex: 1, alignItems: 'center', gap: 2 },
+  statCountRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 2 },
+  statCount: { fontSize: 36, fontWeight: '800', color: '#fff', lineHeight: 40 },
+  statUnit: { fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.85)', paddingBottom: 3 },
+  statLabel: { fontSize: 13, fontWeight: '700', color: '#fff', marginTop: 6 },
+  statSub: { fontSize: 11, color: 'rgba(255,255,255,0.65)' },
+  statDivider: { width: 1, height: 56, backgroundColor: 'rgba(255,255,255,0.25)' },
+
+  quoteCard: {
+    flexDirection: 'row',
+    marginHorizontal: 16,
+    marginBottom: 8,
+    backgroundColor: '#FFFAF3',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#F0E6D2',
+    overflow: 'hidden',
+  },
+  quoteAccent: { width: 4, backgroundColor: '#F5A623' },
+  quoteBody: { flex: 1, padding: 14, gap: 6 },
+  quoteLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#C47E1A',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+  },
+  quoteText: { fontSize: 14, color: '#2a2a2a', lineHeight: 22, fontStyle: 'italic' },
+  quoteSource: { fontSize: 12, color: '#999', fontWeight: '500' },
+  quotePlaceholder: { fontSize: 13, color: '#bbb', lineHeight: 21, fontStyle: 'italic' },
+
   sectionRow: {
     flexDirection: 'row',
     alignItems: 'center',

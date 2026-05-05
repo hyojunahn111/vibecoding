@@ -599,7 +599,9 @@ export default function BookRecordModal({ date, visible, onClose, initialRecord 
     setAllRecords(await getAllRecords());
   };
 
-  const recordsFor = (d: string) => allRecords.filter(r => r.date === d);
+  const recordsFor = (d: string) => allRecords.filter(r =>
+    r.isCompleted && r.endDate ? r.endDate === d : r.date === d
+  );
 
   // FlatList가 어떤 항목을 보여주는지 감지 → 헤더 날짜 업데이트
   const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
