@@ -6,7 +6,6 @@ import {
   Dimensions,
   FlatList,
   Image,
-  SectionList,
   StyleSheet,
   Text,
   TextInput,
@@ -59,10 +58,16 @@ export default function CompletedBooksScreen() {
   const [sortType, setSortType] = useState<SortType>('date');
   const [editingRecord, setEditingRecord] = useState<BookRecord | null>(null);
   const [selectedGenre, setSelectedGenre] = useState<string | null>(null);
+  const [selectedAuthor, setSelectedAuthor] = useState<string | null>(null);
+  const [authorQuery, setAuthorQuery] = useState('');
 
   const overlayOpacity = useRef(new Animated.Value(0)).current;
   const overlayTranslateY = useRef(new Animated.Value(28)).current;
   const overlayScale = useRef(new Animated.Value(0.96)).current;
+
+  const authorOverlayOpacity = useRef(new Animated.Value(0)).current;
+  const authorOverlayTranslateY = useRef(new Animated.Value(28)).current;
+  const authorOverlayScale = useRef(new Animated.Value(0.96)).current;
 
   useFocusEffect(
     useCallback(() => {
@@ -112,7 +117,7 @@ export default function CompletedBooksScreen() {
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(book);
     }
-    return Array.from(map.entries())
+    const all = Array.from(map.entries())
       .sort(([a], [b]) => {
         if (a === '미분류') return 1;
         if (b === '미분류') return -1;
@@ -122,7 +127,9 @@ export default function CompletedBooksScreen() {
         title,
         data: data.sort((a, b) => (b.endDate || b.date).localeCompare(a.endDate || a.date)),
       }));
-  }, [filtered]);
+    const aq = authorQuery.trim().toLowerCase();
+    return aq ? all.filter(s => s.title.toLowerCase().includes(aq)) : all;
+  }, [filtered, authorQuery]);
 
   const openGenre = (genre: string) => {
     setSelectedGenre(genre);
@@ -142,6 +149,26 @@ export default function CompletedBooksScreen() {
       Animated.timing(overlayTranslateY, { toValue: 16, duration: 200, useNativeDriver: true }),
       Animated.timing(overlayScale, { toValue: 0.96, duration: 200, useNativeDriver: true }),
     ]).start(() => setSelectedGenre(null));
+  };
+
+  const openAuthor = (author: string) => {
+    setSelectedAuthor(author);
+    authorOverlayOpacity.setValue(0);
+    authorOverlayTranslateY.setValue(28);
+    authorOverlayScale.setValue(0.96);
+    Animated.parallel([
+      Animated.timing(authorOverlayOpacity, { toValue: 1, duration: 260, useNativeDriver: true }),
+      Animated.spring(authorOverlayTranslateY, { toValue: 0, tension: 72, friction: 12, useNativeDriver: true }),
+      Animated.spring(authorOverlayScale, { toValue: 1, tension: 72, friction: 12, useNativeDriver: true }),
+    ]).start();
+  };
+
+  const closeAuthor = () => {
+    Animated.parallel([
+      Animated.timing(authorOverlayOpacity, { toValue: 0, duration: 200, useNativeDriver: true }),
+      Animated.timing(authorOverlayTranslateY, { toValue: 16, duration: 200, useNativeDriver: true }),
+      Animated.timing(authorOverlayScale, { toValue: 0.96, duration: 200, useNativeDriver: true }),
+    ]).start(() => setSelectedAuthor(null));
   };
 
   const renderGridBook = (item: BookRecord) => (
@@ -282,16 +309,30 @@ export default function CompletedBooksScreen() {
       {/* 검색 */}
       <View style={styles.searchBox}>
         <Text style={styles.searchIcon}>🔍</Text>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="책 제목 검색"
-          placeholderTextColor="#aaa"
-          value={query}
-          onChangeText={setQuery}
-          returnKeyType="search"
-        />
-        {query.length > 0 && (
-          <TouchableOpacity onPress={() => setQuery('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+        {tab === 'author' ? (
+          <TextInput
+            style={styles.searchInput}
+            placeholder="저자 검색"
+            placeholderTextColor="#aaa"
+            value={authorQuery}
+            onChangeText={setAuthorQuery}
+            returnKeyType="search"
+          />
+        ) : (
+          <TextInput
+            style={styles.searchInput}
+            placeholder="책 제목 검색"
+            placeholderTextColor="#aaa"
+            value={query}
+            onChangeText={setQuery}
+            returnKeyType="search"
+          />
+        )}
+        {(tab === 'author' ? authorQuery : query).length > 0 && (
+          <TouchableOpacity
+            onPress={() => tab === 'author' ? setAuthorQuery('') : setQuery('')}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
             <Text style={styles.clearBtn}>✕</Text>
           </TouchableOpacity>
         )}
@@ -339,22 +380,80 @@ export default function CompletedBooksScreen() {
         />
       )}
 
-      {/* 작가별 탭 */}
+      {/* 저자별 탭 */}
       {tab === 'author' && (
-        <SectionList
-          sections={authorSections}
-          keyExtractor={item => item.id}
-          renderItem={({ item }) => renderBook(item)}
-          renderSectionHeader={({ section }) => (
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionHeaderText}>{section.title}</Text>
-              <Text style={styles.sectionCount}>{section.data.length}권</Text>
-            </View>
-          )}
-          ListEmptyComponent={empty}
-          contentContainerStyle={authorSections.length === 0 && styles.emptyContainer}
-          stickySectionHeadersEnabled={false}
-        />
+        authorSections.length === 0 ? (
+          <View style={styles.emptyContainer}>{empty}</View>
+        ) : (
+          <FlatList
+            data={authorSections}
+            keyExtractor={item => item.title}
+            contentContainerStyle={{ paddingVertical: 8 }}
+            renderItem={({ item: section }) => (
+              <TouchableOpacity
+                style={styles.authorRow}
+                onPress={() => openAuthor(section.title)}
+                activeOpacity={0.75}
+              >
+                <View style={styles.authorInfo}>
+                  <Text style={styles.authorName} numberOfLines={1}>{section.title}</Text>
+                  <Text style={styles.authorSubCount}>{section.data.length}권</Text>
+                </View>
+                <View style={styles.authorThumbs}>
+                  {section.data.slice(0, 3).map((book, i) =>
+                    book.thumbnail ? (
+                      <Image
+                        key={book.id}
+                        source={{ uri: book.thumbnail }}
+                        style={[styles.authorThumb, { marginLeft: i === 0 ? 0 : -14, zIndex: 3 - i }]}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <View
+                        key={book.id}
+                        style={[styles.authorThumb, styles.authorThumbEmpty, { marginLeft: i === 0 ? 0 : -14, zIndex: 3 - i }]}
+                      >
+                        <Text style={{ fontSize: 10 }}>📚</Text>
+                      </View>
+                    )
+                  )}
+                </View>
+                <Text style={styles.authorChevron}>›</Text>
+              </TouchableOpacity>
+            )}
+            ItemSeparatorComponent={() => <View style={styles.authorDivider} />}
+          />
+        )
+      )}
+
+      {/* 저자 상세 오버레이 */}
+      {selectedAuthor !== null && (
+        <Animated.View
+          style={[
+            StyleSheet.absoluteFillObject,
+            styles.genreOverlay,
+            {
+              opacity: authorOverlayOpacity,
+              transform: [{ translateY: authorOverlayTranslateY }, { scale: authorOverlayScale }],
+            },
+          ]}
+        >
+          <View style={styles.genreOverlayHeader}>
+            <TouchableOpacity onPress={closeAuthor} style={styles.genreBackBtn}>
+              <Text style={styles.genreBackText}>‹</Text>
+            </TouchableOpacity>
+            <Text style={styles.genreOverlayTitle}>{selectedAuthor}</Text>
+            <Text style={styles.genreOverlayCount}>
+              {authorSections.find(s => s.title === selectedAuthor)?.data.length ?? 0}권
+            </Text>
+          </View>
+          <FlatList
+            data={authorSections.find(s => s.title === selectedAuthor)?.data ?? []}
+            keyExtractor={item => item.id}
+            renderItem={({ item }) => renderBook(item)}
+            contentContainerStyle={{ paddingBottom: 24 }}
+          />
+        </Animated.View>
       )}
 
       {/* 분야 상세 오버레이 */}
@@ -614,19 +713,41 @@ const styles = StyleSheet.create({
   starsText: { fontSize: 13, color: '#F5A623', letterSpacing: 1 },
   dateText: { fontSize: 11, color: '#aaa' },
 
-  // 작가별 섹션 헤더
-  sectionHeader: {
+  // 저자별
+  authorRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    backgroundColor: '#f8f9fb',
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 12,
+    backgroundColor: '#fff',
   },
-  sectionHeaderText: { fontSize: 14, fontWeight: '700', color: '#1a1a1a' },
-  sectionCount: { fontSize: 12, color: '#888' },
+  authorDivider: { height: 1, backgroundColor: '#f0f0f0', marginHorizontal: 16 },
+  authorInitialBadge: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  authorInitialText: { fontSize: 18, fontWeight: '800', color: '#fff' },
+  authorInfo: { flex: 1, gap: 3 },
+  authorName: { fontSize: 15, fontWeight: '600', color: '#1a1a1a' },
+  authorSubCount: { fontSize: 12, color: '#A67B5B', fontWeight: '500' },
+  authorThumbs: { flexDirection: 'row', alignItems: 'center' },
+  authorThumb: {
+    width: 38,
+    height: 55,
+    borderRadius: 5,
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  authorThumbEmpty: {
+    backgroundColor: '#EDE0D0',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  authorChevron: { fontSize: 20, color: '#ccc', lineHeight: 24, marginLeft: 6 },
 
   // 빈 상태
   emptyContainer: { flex: 1 },

@@ -3,8 +3,9 @@ import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import {
   Alert,
-  FlatList,
   Image,
+  RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -45,7 +46,7 @@ export default function MyPageScreen() {
     const completed = all
       .filter(r => r.status === 'completed')
       .sort((a, b) => (b.endDate || b.date).localeCompare(a.endDate || a.date))
-      .slice(0, 3);
+      .slice(0, 6);
     setCompletedBooks(completed);
 
     const allExcerpts: { text: string; bookTitle: string }[] = [];
@@ -107,220 +108,256 @@ export default function MyPageScreen() {
     ]);
   };
 
+  const sortedFavorites = [...favorites]
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .slice(0, 6);
+
   return (
-    <View style={styles.container}>
-      {user && (
-        <View style={styles.profile}>
-          {user.profileImage ? (
-            <Image source={{ uri: user.profileImage }} style={styles.avatar} />
-          ) : (
-            <View style={[styles.avatar, styles.avatarFallback]}>
-              <Text style={styles.avatarText}>👤</Text>
-            </View>
-          )}
-          <View style={styles.profileInfo}>
-            <Text style={styles.nickname}>{user.nickname}</Text>
-            <Text style={styles.bookCount}>즐겨찾기된 책 {favorites.length}권</Text>
-          </View>
-          <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
-            <Text style={styles.logoutText}>로그아웃</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      <FlatList
-        data={[...favorites].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 3)}
-        keyExtractor={item => item.isbn}
-        ListHeaderComponent={
+    <ScrollView
+      style={styles.container}
+      showsVerticalScrollIndicator={false}
+      refreshControl={<RefreshControl refreshing={loading} onRefresh={loadData} tintColor="#A67B5B" />}
+    >
+      {/* ── 히어로 프로필 ── */}
+      <View style={styles.heroSection}>
+        <TouchableOpacity style={styles.logoutBtnTop} onPress={logout}>
+          <Text style={styles.logoutTextTop}>로그아웃</Text>
+        </TouchableOpacity>
+        {user ? (
           <>
-            {/* 완독한 책 통계 카드 */}
-            <View style={styles.statsCard}>
-              <Text style={styles.statsHeading}>완독한 책</Text>
-              <View style={styles.statsRow}>
-                <View style={styles.statItem}>
-                  <View style={styles.statCountRow}>
-                    <Text style={styles.statCount}>{stats.year}</Text>
-                    <Text style={styles.statUnit}>권</Text>
-                  </View>
-                  <Text style={styles.statLabel}>연간</Text>
-                  <Text style={styles.statSub}>{today.getFullYear()}년</Text>
-                </View>
-                <View style={styles.statDivider} />
-                <View style={styles.statItem}>
-                  <View style={styles.statCountRow}>
-                    <Text style={styles.statCount}>{stats.month}</Text>
-                    <Text style={styles.statUnit}>권</Text>
-                  </View>
-                  <Text style={styles.statLabel}>월간</Text>
-                  <Text style={styles.statSub}>{today.getMonth() + 1}월</Text>
-                </View>
-                <View style={styles.statDivider} />
-                <View style={styles.statItem}>
-                  <View style={styles.statCountRow}>
-                    <Text style={styles.statCount}>{stats.week}</Text>
-                    <Text style={styles.statUnit}>권</Text>
-                  </View>
-                  <Text style={styles.statLabel}>주간</Text>
-                  <Text style={styles.statSub}>이번 주</Text>
-                </View>
-              </View>
-            </View>
-
-            {/* 다시 읽는 한 줄 */}
-            <View style={styles.quoteCard}>
-              <Text style={styles.quoteBg}>❝</Text>
-              <View style={styles.quoteBody}>
-                <Text style={styles.quoteLabel}>다시 읽는 한 줄</Text>
-                {dailyExcerpt ? (
-                  <>
-                    <Text style={styles.quoteText}>{dailyExcerpt.text}</Text>
-                    <View style={styles.quoteSourceRow}>
-                      <View style={styles.quoteSourceBar} />
-                      <Text style={styles.quoteSource} numberOfLines={1}>{dailyExcerpt.bookTitle}</Text>
-                    </View>
-                  </>
-                ) : (
-                  <Text style={styles.quotePlaceholder}>
-                    {'당신이 머물렀던 자리,\n그곳의 기록들을 기다리고 있습니다.'}
-                  </Text>
-                )}
-              </View>
-            </View>
-
-            {/* 완독한 책 섹션 */}
-            <View>
-              <View style={styles.sectionRow}>
-                <Text style={styles.sectionTitle}>완독한 책</Text>
-                <TouchableOpacity onPress={() => router.push('/completed-books')}>
-                  <Text style={styles.moreBtn}>더보기 ›</Text>
-                </TouchableOpacity>
-              </View>
-              {completedBooks.length === 0 ? (
-                <View style={styles.emptySmall}>
-                  <Text style={styles.emptySmallText}>아직 완독한 책이 없습니다</Text>
-                </View>
+            <View style={[styles.avatarWrapper]}>
+              {user.profileImage ? (
+                <Image source={{ uri: user.profileImage }} style={styles.heroAvatar} />
               ) : (
-                completedBooks.map(book => (
-                  <View key={book.id} style={styles.completedItem}>
-                    {book.thumbnail ? (
-                      <Image source={{ uri: book.thumbnail }} style={styles.thumbnail} />
-                    ) : (
-                      <View style={[styles.thumbnail, styles.noImage]}>
-                        <Text style={styles.noImageText}>📚</Text>
-                      </View>
-                    )}
-                    <View style={styles.bookInfo}>
-                      <Text style={styles.bookTitle} numberOfLines={2}>{book.title}</Text>
-                      <Text style={styles.bookAuthor} numberOfLines={1}>{book.authors?.join(', ')}</Text>
-                      <Text style={styles.starsText}>{stars(book.rating)}</Text>
-                      {book.endDate ? (
-                        <Text style={styles.dateText}>완독 {book.endDate}</Text>
-                      ) : null}
-                    </View>
-                  </View>
-                ))
+                <View style={[styles.heroAvatar, styles.heroAvatarFallback]}>
+                  <Text style={styles.heroAvatarText}>👤</Text>
+                </View>
               )}
+              <Image
+                source={require('../../assets/bookfooddog1.png')}
+                style={styles.dogDecor}
+                resizeMode="contain"
+                pointerEvents="none"
+              />
             </View>
-
-            {/* 즐겨찾기 섹션 제목 */}
-            <View style={styles.sectionRow}>
-              <Text style={styles.sectionTitle}>즐겨찾기한 책</Text>
-              <TouchableOpacity onPress={() => router.push('/favorites')}>
-                <Text style={styles.moreBtn}>더보기 ›</Text>
-              </TouchableOpacity>
+            <Text style={styles.heroNickname}>{user.nickname}</Text>
+            <View style={styles.heroBadge}>
+              <Text style={styles.heroBadgeText}>올해 {stats.year}권 완독</Text>
             </View>
           </>
-        }
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={styles.bookItem}
-            onPress={() => {
-              const book = {
-                title: item.title,
-                contents: item.contents,
-                url: item.url,
-                isbn: item.isbn,
-                datetime: item.publishedDate,
-                authors: item.authors ? item.authors.split(', ') : [],
-                publisher: item.publisher,
-                translators: [],
-                price: item.price ?? 0,
-                sale_price: item.price ?? 0,
-                thumbnail: item.thumbnail,
-                status: '',
-              };
-              router.push({
-                pathname: '/book/[isbn]',
-                params: { isbn: item.isbn, book: JSON.stringify(book) },
-              });
-            }}
-          >
-            {item.thumbnail ? (
-              <Image source={{ uri: item.thumbnail }} style={styles.thumbnail} />
-            ) : (
-              <View style={[styles.thumbnail, styles.noImage]}>
-                <Text style={styles.noImageText}>📚</Text>
-              </View>
-            )}
-            <View style={styles.bookInfo}>
-              <Text style={styles.bookTitle} numberOfLines={2}>{item.title}</Text>
-              <Text style={styles.bookAuthor} numberOfLines={1}>{item.authors}</Text>
-              <Text style={styles.bookPublisher}>{item.publisher}</Text>
+        ) : (
+          <>
+            <View style={[styles.heroAvatar, styles.heroAvatarFallback]}>
+              <Text style={styles.heroAvatarText}>👤</Text>
             </View>
-            <TouchableOpacity
-              style={styles.removeBtn}
-              onPress={() => removeFavorite(item.isbn, item.title)}
-            >
-              <Text style={styles.removeText}>★</Text>
-            </TouchableOpacity>
-          </TouchableOpacity>
+            <Text style={styles.heroNickname}>로그인이 필요합니다</Text>
+          </>
         )}
-        ListEmptyComponent={
-          !loading ? (
-            <View style={styles.empty}>
-              <Text style={styles.emptyText}>즐겨찾기한 책이 없습니다</Text>
-              <Text style={styles.emptySubText}>책을 검색해서 즐겨찾기에 추가해보세요!</Text>
+      </View>
+
+      {/* ── 완독 통계 카드 ── */}
+      <View style={styles.statsCard}>
+        <Text style={styles.statsHeading}>완독한 책</Text>
+        <View style={styles.statsRow}>
+          <View style={styles.statItem}>
+            <View style={styles.statCountRow}>
+              <Text style={styles.statCount}>{stats.year}</Text>
+              <Text style={styles.statUnit}>권</Text>
             </View>
-          ) : null
-        }
-        refreshing={loading}
-        onRefresh={loadData}
-      />
-    </View>
+            <Text style={styles.statLabel}>연간</Text>
+            <Text style={styles.statSub}>{today.getFullYear()}년</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <View style={styles.statCountRow}>
+              <Text style={styles.statCount}>{stats.month}</Text>
+              <Text style={styles.statUnit}>권</Text>
+            </View>
+            <Text style={styles.statLabel}>월간</Text>
+            <Text style={styles.statSub}>{today.getMonth() + 1}월</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <View style={styles.statCountRow}>
+              <Text style={styles.statCount}>{stats.week}</Text>
+              <Text style={styles.statUnit}>권</Text>
+            </View>
+            <Text style={styles.statLabel}>주간</Text>
+            <Text style={styles.statSub}>이번 주</Text>
+          </View>
+        </View>
+      </View>
+
+      {/* ── 다시 읽는 한 줄 ── */}
+      <View style={styles.quoteCard}>
+        <Text style={styles.quoteBg}>❝</Text>
+        <View style={styles.quoteBody}>
+          <Text style={styles.quoteLabel}>다시 읽는 한 줄</Text>
+          {dailyExcerpt ? (
+            <>
+              <Text style={styles.quoteText}>{dailyExcerpt.text}</Text>
+              <View style={styles.quoteSourceRow}>
+                <View style={styles.quoteSourceBar} />
+                <Text style={styles.quoteSource} numberOfLines={1}>{dailyExcerpt.bookTitle}</Text>
+              </View>
+            </>
+          ) : (
+            <Text style={styles.quotePlaceholder}>
+              {'당신이 머물렀던 자리,\n그곳의 기록들을 기다리고 있습니다.'}
+            </Text>
+          )}
+        </View>
+      </View>
+
+      {/* ── 완독한 책 ── */}
+      <View style={styles.section}>
+        <View style={styles.sectionRow}>
+          <Text style={styles.sectionTitle}>완독한 책</Text>
+          <TouchableOpacity onPress={() => router.push('/completed-books')}>
+            <Text style={styles.moreBtn}>더보기 ›</Text>
+          </TouchableOpacity>
+        </View>
+        {completedBooks.length === 0 ? (
+          <View style={styles.emptyHorizontal}>
+            <Text style={styles.emptySmallText}>아직 완독한 책이 없습니다</Text>
+          </View>
+        ) : (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.horizontalList}
+          >
+            {completedBooks.map(book => (
+              <View key={book.id} style={styles.bookCard}>
+                {book.thumbnail ? (
+                  <Image source={{ uri: book.thumbnail }} style={styles.bookCardThumb} resizeMode="cover" />
+                ) : (
+                  <View style={[styles.bookCardThumb, styles.noImage]}>
+                    <Text style={styles.noImageText}>📚</Text>
+                  </View>
+                )}
+                <Text style={styles.bookCardTitle} numberOfLines={1}>{book.title}</Text>
+                <Text style={styles.bookCardStars}>{stars(book.rating)}</Text>
+              </View>
+            ))}
+          </ScrollView>
+        )}
+      </View>
+
+      {/* ── 즐겨찾기한 책 ── */}
+      <View style={styles.section}>
+        <View style={styles.sectionRow}>
+          <Text style={styles.sectionTitle}>즐겨찾기한 책</Text>
+          <TouchableOpacity onPress={() => router.push('/favorites')}>
+            <Text style={styles.moreBtn}>더보기 ›</Text>
+          </TouchableOpacity>
+        </View>
+        {sortedFavorites.length === 0 ? (
+          <View style={styles.emptyHorizontal}>
+            <Text style={styles.emptySmallText}>즐겨찾기한 책이 없습니다</Text>
+          </View>
+        ) : (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.horizontalList}
+          >
+            {sortedFavorites.map(item => (
+              <TouchableOpacity
+                key={item.isbn}
+                style={styles.bookCard}
+                onPress={() => {
+                  const book = {
+                    title: item.title,
+                    contents: item.contents,
+                    url: item.url,
+                    isbn: item.isbn,
+                    datetime: item.publishedDate,
+                    authors: item.authors ? item.authors.split(', ') : [],
+                    publisher: item.publisher,
+                    translators: [],
+                    price: item.price ?? 0,
+                    sale_price: item.price ?? 0,
+                    thumbnail: item.thumbnail,
+                    status: '',
+                  };
+                  router.push({
+                    pathname: '/book/[isbn]',
+                    params: { isbn: item.isbn, book: JSON.stringify(book) },
+                  });
+                }}
+              >
+                <View>
+                  {item.thumbnail ? (
+                    <Image source={{ uri: item.thumbnail }} style={styles.bookCardThumb} resizeMode="cover" />
+                  ) : (
+                    <View style={[styles.bookCardThumb, styles.noImage]}>
+                      <Text style={styles.noImageText}>📚</Text>
+                    </View>
+                  )}
+                  <TouchableOpacity
+                    style={styles.favRemoveBtn}
+                    onPress={() => removeFavorite(item.isbn, item.title)}
+                  >
+                    <Text style={styles.favRemoveText}>★</Text>
+                  </TouchableOpacity>
+                </View>
+                <Text style={styles.bookCardTitle} numberOfLines={2}>{item.title}</Text>
+                <Text style={styles.bookCardAuthor} numberOfLines={1}>{item.authors}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        )}
+      </View>
+
+      <View style={{ height: 40 }} />
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  profile: {
-    flexDirection: 'row',
+  container: { flex: 1, backgroundColor: '#FDF6EC' },
+
+  // ── 히어로 프로필
+  heroSection: {
+    backgroundColor: '#F5EBE0',
     alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-    gap: 12,
+    paddingTop: 48,
+    paddingBottom: 32,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+    marginBottom: 20,
   },
-  avatar: { width: 52, height: 52, borderRadius: 26 },
-  avatarFallback: {
-    backgroundColor: '#f0f0f0',
+  logoutBtnTop: { position: 'absolute', top: 16, right: 20 },
+  avatarWrapper: { position: 'relative', marginBottom: 14 },
+  dogDecor: {
+    position: 'absolute',
+    top: -38,
+    left: 8,
+    width: 68,
+    height: 68,
+  },
+  logoutTextTop: { fontSize: 12, color: '#A67B5B', fontWeight: '500' },
+  heroAvatar: { width: 84, height: 84, borderRadius: 42, marginBottom: 14 },
+  heroAvatarFallback: {
+    backgroundColor: '#EDE0D0',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  avatarText: { fontSize: 24 },
-  profileInfo: { flex: 1 },
-  nickname: { fontSize: 16, fontWeight: '600', color: '#1a1a1a' },
-  bookCount: { fontSize: 13, color: '#888', marginTop: 2 },
-  logoutBtn: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+  heroAvatarText: { fontSize: 38 },
+  heroNickname: { fontSize: 20, fontWeight: '700', color: '#3E2A1F', marginBottom: 10 },
+  heroBadge: {
+    backgroundColor: '#D98743',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 5,
   },
-  logoutText: { fontSize: 12, color: '#888' },
+  heroBadgeText: { fontSize: 12, color: '#fff', fontWeight: '700', letterSpacing: 0.3 },
+
+  // ── 통계 카드
   statsCard: {
-    margin: 16,
-    marginBottom: 8,
+    marginHorizontal: 16,
+    marginBottom: 12,
     paddingVertical: 20,
     paddingHorizontal: 8,
     backgroundColor: '#F5EBE0',
@@ -334,10 +371,10 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   statsHeading: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#A67B5B',
-    fontWeight: '600',
-    letterSpacing: 0.8,
+    fontWeight: '700',
+    letterSpacing: 1,
     textAlign: 'center',
     marginBottom: 16,
     textTransform: 'uppercase',
@@ -351,9 +388,10 @@ const styles = StyleSheet.create({
   statSub: { fontSize: 11, color: '#A67B5B' },
   statDivider: { width: 1, height: 56, backgroundColor: 'rgba(62,42,31,0.12)' },
 
+  // ── 한 줄 카드
   quoteCard: {
     marginHorizontal: 16,
-    marginBottom: 8,
+    marginBottom: 20,
     backgroundColor: '#FFFAF3',
     borderRadius: 14,
     borderWidth: 1,
@@ -383,55 +421,47 @@ const styles = StyleSheet.create({
   quoteSource: { fontSize: 12, color: '#A67B5B', fontWeight: '600' },
   quotePlaceholder: { fontSize: 13, color: '#bbb', lineHeight: 21, fontStyle: 'italic' },
 
+  // ── 섹션 공통
+  section: { marginBottom: 16 },
   sectionRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingRight: 16,
-    paddingTop: 4,
+    paddingHorizontal: 16,
+    marginBottom: 12,
   },
-  sectionTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#1a1a1a',
-    padding: 16,
-    paddingBottom: 8,
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: '#3E2A1F' },
+  moreBtn: { fontSize: 13, color: '#A67B5B', fontWeight: '500' },
+
+  // ── 가로 스크롤 책 카드
+  horizontalList: { paddingHorizontal: 16, gap: 14 },
+  bookCard: { width: 100, gap: 6 },
+  bookCardThumb: {
+    width: 100,
+    height: 148,
+    borderRadius: 10,
+    backgroundColor: '#EDE0D0',
   },
-  moreBtn: { fontSize: 13, color: '#4A90E2', fontWeight: '500' },
-  completedItem: {
-    flexDirection: 'row',
-    padding: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-    gap: 12,
-    alignItems: 'flex-start',
-  },
-  starsText: { fontSize: 12, color: '#F5A623', letterSpacing: 1 },
-  dateText: { fontSize: 11, color: '#aaa' },
-  emptySmall: { paddingHorizontal: 16, paddingBottom: 12 },
-  emptySmallText: { fontSize: 13, color: '#aaa' },
-  bookItem: {
-    flexDirection: 'row',
-    padding: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+  bookCardTitle: { fontSize: 12, color: '#3E2A1F', fontWeight: '600', lineHeight: 17 },
+  bookCardStars: { fontSize: 11, color: '#D98743', letterSpacing: 1 },
+  bookCardAuthor: { fontSize: 11, color: '#A67B5B' },
+  favRemoveBtn: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    backgroundColor: 'rgba(0,0,0,0.32)',
+    borderRadius: 12,
+    width: 24,
+    height: 24,
     alignItems: 'center',
-    gap: 12,
-  },
-  thumbnail: { width: 52, height: 75, borderRadius: 4 },
-  noImage: {
-    backgroundColor: '#f5f5f5',
     justifyContent: 'center',
-    alignItems: 'center',
   },
-  noImageText: { fontSize: 20 },
-  bookInfo: { flex: 1, gap: 3 },
-  bookTitle: { fontSize: 14, fontWeight: '600', color: '#1a1a1a' },
-  bookAuthor: { fontSize: 12, color: '#666' },
-  bookPublisher: { fontSize: 12, color: '#999' },
-  removeBtn: { padding: 8 },
-  removeText: { fontSize: 20, color: '#4A90E2' },
-  empty: { padding: 40, alignItems: 'center', gap: 8 },
-  emptyText: { fontSize: 16, color: '#666', fontWeight: '500' },
-  emptySubText: { fontSize: 14, color: '#aaa' },
+  favRemoveText: { fontSize: 11, color: '#FFD700' },
+
+  // ── 빈 상태
+  emptyHorizontal: { paddingHorizontal: 16, paddingBottom: 8 },
+  emptySmallText: { fontSize: 13, color: '#bbb' },
+
+  noImage: { justifyContent: 'center', alignItems: 'center' },
+  noImageText: { fontSize: 28 },
 });
