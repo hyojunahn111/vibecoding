@@ -18,8 +18,8 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "./assets/bookfoodlogo.png",
+        "backgroundColor": "#FDF6EC"
       },
       "package": "com.bp.mybooklist",
       "edgeToEdgeEnabled": true,
