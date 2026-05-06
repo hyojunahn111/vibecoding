@@ -7,15 +7,19 @@ import {
   Dimensions,
   Image,
   Modal,
+  Platform,
   StyleSheet,
   Text,
   ToastAndroid,
   TouchableOpacity,
   View,
 } from 'react-native';
-import { WebView, WebViewNavigation } from 'react-native-webview';
 import { useAuth } from '../src/context/AuthContext';
 import { authApi } from '../src/services/api';
+import { WEB_REDIRECT_URI } from './oauth/kakao';
+
+type WebViewNavigation = { url: string };
+const WebView = Platform.OS !== 'web' ? require('react-native-webview').WebView : null;
 
 const KAKAO_CLIENT_ID = process.env.EXPO_PUBLIC_KAKAO_REST_API_KEY!;
 const REDIRECT_URI = 'https://mybooklist.app/oauth/kakao';
@@ -52,6 +56,20 @@ export default function LoginScreen() {
     `?client_id=${KAKAO_CLIENT_ID}` +
     `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}` +
     `&response_type=code`;
+
+  const webKakaoAuthUrl =
+    `https://kauth.kakao.com/oauth/authorize` +
+    `?client_id=${KAKAO_CLIENT_ID}` +
+    `&redirect_uri=${encodeURIComponent(WEB_REDIRECT_URI)}` +
+    `&response_type=code`;
+
+  const handleKakaoLogin = () => {
+    if (Platform.OS === 'web') {
+      window.location.href = webKakaoAuthUrl;
+    } else {
+      setShowWebView(true);
+    }
+  };
 
   const handleShouldStartLoad = (navState: WebViewNavigation) => {
     const { url } = navState;
@@ -115,7 +133,7 @@ export default function LoginScreen() {
 
         <TouchableOpacity
           style={styles.kakaoButton}
-          onPress={() => setShowWebView(true)}
+          onPress={handleKakaoLogin}
           disabled={exchanging}
         >
           {exchanging
@@ -125,17 +143,19 @@ export default function LoginScreen() {
         </TouchableOpacity>
       </View>
 
-      <Modal visible={showWebView} animationType="slide">
-        <View style={styles.webViewContainer}>
-          <TouchableOpacity style={styles.closeButton} onPress={() => setShowWebView(false)}>
-            <Text style={styles.closeText}>✕ 닫기</Text>
-          </TouchableOpacity>
-          <WebView
-            source={{ uri: kakaoAuthUrl }}
-            onShouldStartLoadWithRequest={handleShouldStartLoad}
-          />
-        </View>
-      </Modal>
+      {Platform.OS !== 'web' && (
+        <Modal visible={showWebView} animationType="slide">
+          <View style={styles.webViewContainer}>
+            <TouchableOpacity style={styles.closeButton} onPress={() => setShowWebView(false)}>
+              <Text style={styles.closeText}>✕ 닫기</Text>
+            </TouchableOpacity>
+            <WebView
+              source={{ uri: kakaoAuthUrl }}
+              onShouldStartLoadWithRequest={handleShouldStartLoad}
+            />
+          </View>
+        </Modal>
+      )}
     </View>
   );
 }
