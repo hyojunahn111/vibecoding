@@ -28,7 +28,14 @@ export default function SearchScreen() {
   const [page, setPage] = useState(1);
   const [isEnd, setIsEnd] = useState(false);
   const [searchBarHeight, setSearchBarHeight] = useState(0);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const show = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true));
+    const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboardVisible(false));
+    return () => { show.remove(); hide.remove(); };
+  }, []);
 
   const showDropdown = showSuggestions || showHistory;
 
@@ -138,12 +145,16 @@ export default function SearchScreen() {
         renderItem={({ item }) => (
           <TouchableOpacity
             style={styles.bookItem}
-            onPress={() =>
+            onPress={() => {
+              if (keyboardVisible) {
+                Keyboard.dismiss();
+                return;
+              }
               router.push({
                 pathname: '/book/[isbn]',
                 params: { isbn: item.isbn, book: JSON.stringify(item) },
-              })
-            }
+              });
+            }}
           >
             {item.thumbnail ? (
               <Image source={{ uri: item.thumbnail }} style={styles.thumbnail} />
@@ -256,12 +267,12 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   searchBtn: {
-    backgroundColor: '#4A90E2',
+    backgroundColor: '#A67B5B',
     paddingHorizontal: 16,
     borderRadius: 8,
     justifyContent: 'center',
   },
-  searchBtnText: { color: '#fff', fontWeight: '600' },
+  searchBtnText: { color: '#FDF6EC', fontWeight: '600' },
   dropdown: {
     position: 'absolute',
     left: 12,
