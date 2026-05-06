@@ -1,16 +1,16 @@
 {
   "expo": {
-    "name": "MyBookList",
+    "name": "책식",
     "slug": "mybooklistfront",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/bookfoodlogo.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/bookfoodmain.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "image": "./assets/bookfood3.png",
+      "resizeMode": "cover",
+      "backgroundColor": "#FDF6EC"
     },
     "ios": {
       "supportsTablet": true,
@@ -31,6 +31,12 @@
     "plugins": [
       "expo-router"
     ],
-    "scheme": "mybooklist"
+    "scheme": "mybooklist",
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "ad15586a-5530-4776-9508-4b47d3d8e563"
+      }
+    }
   }
 }

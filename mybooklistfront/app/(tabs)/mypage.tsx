@@ -137,7 +137,6 @@ export default function MyPageScreen() {
                 source={require('../../assets/bookfooddog1.png')}
                 style={styles.dogDecor}
                 resizeMode="contain"
-                pointerEvents="none"
               />
             </View>
             <Text style={styles.heroNickname}>{user.nickname}</Text>
