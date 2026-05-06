@@ -36,6 +36,7 @@ public class SecurityConfig {
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/auth/**").permitAll()
+                .requestMatchers("/health").permitAll()
                 .requestMatchers(HttpMethod.GET, "/books/search").permitAll()
                 .anyRequest().authenticated())
             .addFilterBefore(
