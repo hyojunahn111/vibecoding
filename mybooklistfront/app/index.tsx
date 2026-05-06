@@ -4,6 +4,8 @@ import {
   ActivityIndicator,
   Alert,
   BackHandler,
+  Dimensions,
+  Image,
   Modal,
   StyleSheet,
   Text,
@@ -17,20 +19,19 @@ import { authApi } from '../src/services/api';
 
 const KAKAO_CLIENT_ID = process.env.EXPO_PUBLIC_KAKAO_REST_API_KEY!;
 const REDIRECT_URI = 'https://mybooklist.app/oauth/kakao';
+const { height: SCREEN_H } = Dimensions.get('window');
 
 export default function LoginScreen() {
   const { user, loading, login } = useAuth();
   const [showWebView, setShowWebView] = useState(false);
   const [exchanging, setExchanging] = useState(false);
 
-  // 로그인 상태 확인 후 탭으로 이동
   useEffect(() => {
     if (!loading && user) {
       router.replace('/(tabs)');
     }
   }, [user, loading]);
 
-  // 뒤로가기 두 번 → 앱 종료
   const lastBackPress = useRef<number>(0);
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -89,26 +90,40 @@ export default function LoginScreen() {
   if (loading || user) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#FEE500" />
+        <ActivityIndicator size="large" color="#D98743" />
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>📚 나의 책 목록</Text>
-      <Text style={styles.subtitle}>읽은 책을 기록하고 관리하세요</Text>
+      {/* 풀스크린 일러스트 배경 */}
+      <Image
+        source={require('../assets/bookfood3.png')}
+        style={styles.bgImage}
+        resizeMode="cover"
+      />
 
-      <TouchableOpacity
-        style={styles.kakaoButton}
-        onPress={() => setShowWebView(true)}
-        disabled={exchanging}
-      >
-        {exchanging
-          ? <ActivityIndicator color="#1a1a1a" />
-          : <Text style={styles.kakaoButtonText}>카카오로 시작하기</Text>
-        }
-      </TouchableOpacity>
+      {/* 어두운 오버레이 */}
+      <View style={styles.overlay} />
+
+      {/* 중앙 로그인 카드 */}
+      <View style={styles.card}>
+        <Text style={styles.brandSub}>BOOKFOOD</Text>
+        <Text style={styles.title}>책식</Text>
+        <Text style={styles.subtitle}>읽은 책을 기록하고 관리하세요</Text>
+
+        <TouchableOpacity
+          style={styles.kakaoButton}
+          onPress={() => setShowWebView(true)}
+          disabled={exchanging}
+        >
+          {exchanging
+            ? <ActivityIndicator color="#1a1a1a" />
+            : <Text style={styles.kakaoButtonText}>카카오로 시작하기</Text>
+          }
+        </TouchableOpacity>
+      </View>
 
       <Modal visible={showWebView} animationType="slide">
         <View style={styles.webViewContainer}>
@@ -126,38 +141,64 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#fff' },
-  splash: {
+  container: { flex: 1 },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FDF6EC' },
+
+  bgImage: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#fff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 10,
+    width: '100%',
+    height: '100%',
   },
-  splashImage: {
-    width: '80%',
-    height: '80%',
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(30, 16, 8, 0.38)',
   },
-  container: {
+
+  card: {
     flex: 1,
     justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
+    alignItems: 'flex-start',
+    paddingHorizontal: 32,
+    paddingBottom: 56,
+    paddingTop: SCREEN_H * 0.52,
+    gap: 0,
   },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  title: { fontSize: 32, fontWeight: 'bold', marginBottom: 12, color: '#1a1a1a' },
-  subtitle: { fontSize: 16, color: '#666', marginBottom: 60 },
+  brandSub: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: 'rgba(253,246,236,0.7)',
+    letterSpacing: 4,
+    marginBottom: 6,
+  },
+  title: {
+    fontSize: 48,
+    fontWeight: '800',
+    color: '#FDF6EC',
+    lineHeight: 54,
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: 'rgba(253,246,236,0.75)',
+    marginBottom: 40,
+  },
+
   kakaoButton: {
     backgroundColor: '#FEE500',
-    paddingHorizontal: 40,
     paddingVertical: 16,
-    borderRadius: 12,
-    width: '100%',
+    borderRadius: 14,
     alignItems: 'center',
-    height: 52,
     justifyContent: 'center',
+    height: 54,
+    width: '100%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
   },
-  kakaoButtonText: { fontSize: 16, fontWeight: '600', color: '#1a1a1a' },
+  kakaoButtonText: { fontSize: 16, fontWeight: '700', color: '#1a1a1a' },
+
   webViewContainer: { flex: 1, paddingTop: 50 },
   closeButton: { padding: 16, alignItems: 'flex-end' },
   closeText: { fontSize: 16, color: '#666' },
