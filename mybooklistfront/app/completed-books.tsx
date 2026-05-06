@@ -275,7 +275,7 @@ export default function CompletedBooksScreen() {
           style={[styles.tab, tab === 'author' && styles.tabActive]}
           onPress={() => setTab('author')}
         >
-          <Text style={[styles.tabText, tab === 'author' && styles.tabTextActive]}>작가별</Text>
+          <Text style={[styles.tabText, tab === 'author' && styles.tabTextActive]}>저자별</Text>
         </TouchableOpacity>
       </View>
 

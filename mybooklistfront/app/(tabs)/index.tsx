@@ -205,27 +205,35 @@ export default function HomeScreen() {
       </View>
 
       {/* ── 슬라이드 달력 ── */}
-      <FlatList
-        ref={flatListRef}
-        data={MONTH_LIST}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        keyExtractor={item => `${item.y}-${item.m}`}
-        renderItem={renderItem}
-        getItemLayout={(_, index) => ({
-          length: SCREEN_W,
-          offset: SCREEN_W * index,
-          index,
-        })}
-        initialScrollIndex={HALF}
-        onViewableItemsChanged={onViewableItemsChanged}
-        viewabilityConfig={viewabilityConfig}
-        windowSize={5}
-        maxToRenderPerBatch={3}
-        initialNumToRender={3}
-        style={{ flex: 1 }}
-      />
+      <View style={{ flex: 1 }}>
+        <FlatList
+          ref={flatListRef}
+          data={MONTH_LIST}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          keyExtractor={item => `${item.y}-${item.m}`}
+          renderItem={renderItem}
+          getItemLayout={(_, index) => ({
+            length: SCREEN_W,
+            offset: SCREEN_W * index,
+            index,
+          })}
+          initialScrollIndex={HALF}
+          onViewableItemsChanged={onViewableItemsChanged}
+          viewabilityConfig={viewabilityConfig}
+          windowSize={5}
+          maxToRenderPerBatch={3}
+          initialNumToRender={3}
+          style={{ flex: 1 }}
+        />
+        <Image
+          source={require('../../assets/bookfoodcat1.png')}
+          style={styles.catDecor}
+          resizeMode="contain"
+          pointerEvents="none"
+        />
+      </View>
 
       <BookRecordModal
         date={selectedDate}
@@ -292,4 +300,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#4A90E2',
   },
   thumbImage: { width: '100%', height: '100%' },
+  catDecor: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 120,
+    height: 120,
+  },
 });

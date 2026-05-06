@@ -168,13 +168,16 @@ export default function MyPageScreen() {
 
             {/* 다시 읽는 한 줄 */}
             <View style={styles.quoteCard}>
-              <View style={styles.quoteAccent} />
+              <Text style={styles.quoteBg}>❝</Text>
               <View style={styles.quoteBody}>
                 <Text style={styles.quoteLabel}>다시 읽는 한 줄</Text>
                 {dailyExcerpt ? (
                   <>
-                    <Text style={styles.quoteText}>"{dailyExcerpt.text}"</Text>
-                    <Text style={styles.quoteSource} numberOfLines={1}>— {dailyExcerpt.bookTitle}</Text>
+                    <Text style={styles.quoteText}>{dailyExcerpt.text}</Text>
+                    <View style={styles.quoteSourceRow}>
+                      <View style={styles.quoteSourceBar} />
+                      <Text style={styles.quoteSource} numberOfLines={1}>{dailyExcerpt.bookTitle}</Text>
+                    </View>
                   </>
                 ) : (
                   <Text style={styles.quotePlaceholder}>
@@ -320,17 +323,19 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     paddingVertical: 20,
     paddingHorizontal: 8,
-    backgroundColor: '#4A90E2',
+    backgroundColor: '#F5EBE0',
     borderRadius: 16,
-    shadowColor: '#4A90E2',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
+    borderWidth: 1,
+    borderColor: '#E5D5C5',
+    shadowColor: '#A67B5B',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
     shadowRadius: 8,
-    elevation: 6,
+    elevation: 4,
   },
   statsHeading: {
     fontSize: 12,
-    color: 'rgba(255,255,255,0.8)',
+    color: '#A67B5B',
     fontWeight: '600',
     letterSpacing: 0.8,
     textAlign: 'center',
@@ -340,14 +345,13 @@ const styles = StyleSheet.create({
   statsRow: { flexDirection: 'row', alignItems: 'center' },
   statItem: { flex: 1, alignItems: 'center', gap: 2 },
   statCountRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 2 },
-  statCount: { fontSize: 36, fontWeight: '800', color: '#fff', lineHeight: 40 },
-  statUnit: { fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.85)', paddingBottom: 3 },
-  statLabel: { fontSize: 13, fontWeight: '700', color: '#fff', marginTop: 6 },
-  statSub: { fontSize: 11, color: 'rgba(255,255,255,0.65)' },
-  statDivider: { width: 1, height: 56, backgroundColor: 'rgba(255,255,255,0.25)' },
+  statCount: { fontSize: 36, fontWeight: '800', color: '#3E2A1F', lineHeight: 40 },
+  statUnit: { fontSize: 13, fontWeight: '600', color: '#A67B5B', paddingBottom: 3 },
+  statLabel: { fontSize: 13, fontWeight: '700', color: '#4A3525', marginTop: 6 },
+  statSub: { fontSize: 11, color: '#A67B5B' },
+  statDivider: { width: 1, height: 56, backgroundColor: 'rgba(62,42,31,0.12)' },
 
   quoteCard: {
-    flexDirection: 'row',
     marginHorizontal: 16,
     marginBottom: 8,
     backgroundColor: '#FFFAF3',
@@ -356,8 +360,16 @@ const styles = StyleSheet.create({
     borderColor: '#F0E6D2',
     overflow: 'hidden',
   },
-  quoteAccent: { width: 4, backgroundColor: '#F5A623' },
-  quoteBody: { flex: 1, padding: 14, gap: 6 },
+  quoteBg: {
+    position: 'absolute',
+    top: -8,
+    left: 12,
+    fontSize: 80,
+    color: '#D98743',
+    opacity: 0.07,
+    lineHeight: 90,
+  },
+  quoteBody: { padding: 18, gap: 8 },
   quoteLabel: {
     fontSize: 10,
     fontWeight: '700',
@@ -365,8 +377,10 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
     textTransform: 'uppercase',
   },
-  quoteText: { fontSize: 14, color: '#2a2a2a', lineHeight: 22, fontStyle: 'italic' },
-  quoteSource: { fontSize: 12, color: '#999', fontWeight: '500' },
+  quoteText: { fontSize: 14, color: '#2a2a2a', lineHeight: 23, fontStyle: 'italic' },
+  quoteSourceRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
+  quoteSourceBar: { width: 20, height: 1.5, backgroundColor: '#D98743' },
+  quoteSource: { fontSize: 12, color: '#A67B5B', fontWeight: '600' },
   quotePlaceholder: { fontSize: 13, color: '#bbb', lineHeight: 21, fontStyle: 'italic' },
 
   sectionRow: {
